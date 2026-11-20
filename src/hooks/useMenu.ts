@@ -17,7 +17,7 @@ export const useMenu = () => {
 
     try {
       setLoading(true);
-      
+
       const { data: items, error: itemsError } = await supabase
         .from('menu_items')
         .select(`
@@ -39,11 +39,11 @@ export const useMenu = () => {
         const now = new Date();
         const discountStart = item.discount_start_date ? new Date(item.discount_start_date) : null;
         const discountEnd = item.discount_end_date ? new Date(item.discount_end_date) : null;
-        
-        const isDiscountActive = item.discount_active && 
-          (!discountStart || now >= discountStart) && 
+
+        const isDiscountActive = item.discount_active &&
+          (!discountStart || now >= discountStart) &&
           (!discountEnd || now <= discountEnd);
-        
+
         const effectivePrice = isDiscountActive && item.discount_price ? item.discount_price : item.base_price;
 
         return {

@@ -8,10 +8,10 @@ interface ImageUploadProps {
   className?: string;
 }
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ 
-  currentImage, 
-  onImageChange, 
-  className = '' 
+const ImageUpload: React.FC<ImageUploadProps> = ({
+  currentImage,
+  onImageChange,
+  className = ''
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { deleteImage } = useImageUpload();
@@ -61,7 +61,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       <label className="block text-sm font-medium text-black mb-2">Menu Item Image</label>
-      
+
       {currentImage ? (
         <div className="relative">
           <img
@@ -149,7 +149,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           placeholder="/images/chick-central-logo.jpg or https://..."
           disabled={isLoading}
         />
-        
+
         {/* Quick Path Helper */}
         <button
           type="button"
@@ -158,7 +158,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         >
           🍲 Use Afoodable Bites Logo
         </button>
-        
+
         <p className="text-xs text-gray-500">
           💡 <strong>Supports:</strong> All image formats • Any quality/size • Upload file or enter URL
         </p>

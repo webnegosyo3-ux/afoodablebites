@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Save, X, ArrowLeft, CreditCard, Upload } from 'lucide-react';
+import { 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Save, 
+  X, 
+  ArrowLeft, 
+  CreditCard, 
+  Banknote, 
+  CheckCircle2, 
+  QrCode, 
+  Power,
+  Flame,
+  AlertCircle
+} from 'lucide-react';
 import { usePaymentMethods, PaymentMethod } from '../hooks/usePaymentMethods';
 import ImageUpload from './ImageUpload';
 
@@ -7,10 +21,24 @@ interface PaymentMethodManagerProps {
   onBack: () => void;
 }
 
+const inputCls =
+  'w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition';
+const labelCls = 'block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5';
+
 const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) => {
-  const { paymentMethods, addPaymentMethod, updatePaymentMethod, deletePaymentMethod, refetchAll } = usePaymentMethods();
+  const { 
+    paymentMethods, 
+    addPaymentMethod, 
+    updatePaymentMethod, 
+    deletePaymentMethod, 
+    togglePaymentMethod,
+    refetchAll 
+  } = usePaymentMethods();
+
   const [currentView, setCurrentView] = useState<'list' | 'add' | 'edit'>('list');
   const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const [formData, setFormData] = useState({
     id: '',
     name: '',
@@ -23,7 +51,27 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
 
   React.useEffect(() => {
     refetchAll();
-  }, []);
+  }, [refetchAll]);
+
+  const codMethod = paymentMethods.find(m => m.id === 'payment-cod' || m.id === 'cod');
+  const isCodActive = codMethod ? codMethod.active : false;
+
+  const handleToggleCod = async () => {
+    if (codMethod) {
+      await togglePaymentMethod(codMethod.id);
+    } else {
+      // Create default COD if not yet present
+      await addPaymentMethod({
+        id: 'payment-cod',
+        name: 'Cash on Delivery (COD) / Counter',
+        account_number: 'Cash Payment',
+        account_name: 'Pay upon delivery / at counter',
+        qr_code_url: '',
+        active: true,
+        sort_order: 2
+      });
+    }
+  };
 
   const handleAddMethod = () => {
     const nextSortOrder = Math.max(...paymentMethods.map(m => m.sort_order), 0) + 1;
@@ -31,7 +79,7 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
       id: '',
       name: '',
       account_number: '',
-      account_name: '',
+      account_name: 'Afoodable Bites',
       qr_code_url: '',
       active: true,
       sort_order: nextSortOrder
@@ -53,8 +101,8 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
     setCurrentView('edit');
   };
 
-  const handleDeleteMethod = async (id: string) => {
-    if (confirm('Are you sure you want to delete this payment method?')) {
+  const handleDeleteMethod = async (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete payment method "${name}"?`)) {
       try {
         await deletePaymentMethod(id);
       } catch (error) {
@@ -63,29 +111,30 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
     }
   };
 
-  const handleSaveMethod = async () => {
-    if (!formData.id || !formData.name || !formData.account_number || !formData.account_name || !formData.qr_code_url) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    // Validate ID format (kebab-case)
-    const idRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-    if (!idRegex.test(formData.id)) {
-      alert('Payment method ID must be in kebab-case format (e.g., "gcash", "bank-transfer")');
+  const handleSaveMethod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      alert('Please fill in the payment method name');
       return;
     }
 
     try {
+      setIsSaving(true);
       if (editingMethod) {
         await updatePaymentMethod(editingMethod.id, formData);
       } else {
-        await addPaymentMethod(formData);
+        const idToUse = formData.id.trim() || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        await addPaymentMethod({
+          ...formData,
+          id: idToUse
+        });
       }
       setCurrentView('list');
       setEditingMethod(null);
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to save payment method');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -94,56 +143,37 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
     setEditingMethod(null);
   };
 
-  const generateIdFromName = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
-
-  const handleNameChange = (name: string) => {
-    setFormData({
-      ...formData,
-      name,
-      id: currentView === 'add' ? generateIdFromName(name) : formData.id
-    });
-  };
-
-  // Form View (Add/Edit)
+  // Add / Edit Modal Form View
   if (currentView === 'add' || currentView === 'edit') {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-zinc-950 text-white pb-16">
+        <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
                 <button
+                  type="button"
                   onClick={handleCancel}
-                  className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors duration-200"
+                  className="flex items-center space-x-1.5 text-zinc-400 hover:text-amber-400 transition text-sm font-medium"
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 w-4" />
                   <span>Back</span>
                 </button>
-                <h1 className="text-2xl font-playfair font-semibold text-black">
-                  {currentView === 'add' ? 'Add Payment Method' : 'Edit Payment Method'}
+                <span className="text-zinc-700">|</span>
+                <h1 className="text-lg font-bold text-white flex items-center space-x-2">
+                  <CreditCard className="w-5 h-5 text-amber-500" />
+                  <span>{currentView === 'add' ? 'Add Payment Method' : 'Edit Payment Method'}</span>
                 </h1>
               </div>
-              <div className="flex space-x-3">
+
+              <div className="flex items-center space-x-2">
                 <button
+                  type="button"
                   onClick={handleCancel}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 flex items-center space-x-2"
+                  disabled={isSaving}
+                  className="px-3.5 py-2 border border-zinc-700 hover:border-zinc-500 text-zinc-300 rounded-xl text-xs font-semibold transition"
                 >
-                  <X className="h-4 w-4" />
-                  <span>Cancel</span>
-                </button>
-                <button
-                  onClick={handleSaveMethod}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>Save</span>
+                  Cancel
                 </button>
               </div>
             </div>
@@ -151,93 +181,99 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
         </div>
 
         <div className="max-w-2xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-xl shadow-sm p-8">
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-black mb-2">Payment Method Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="e.g., GCash, Maya, Bank Transfer"
-                />
-              </div>
+          <form onSubmit={handleSaveMethod} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
+            <div>
+              <label className={labelCls}>Payment Method Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className={inputCls}
+                placeholder="e.g. GCash, Maya, Bank Transfer, Cash on Delivery"
+              />
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-black mb-2">Method ID *</label>
-                <input
-                  type="text"
-                  value={formData.id}
-                  onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="kebab-case-id"
-                  disabled={currentView === 'edit'}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {currentView === 'edit' 
-                    ? 'Method ID cannot be changed after creation'
-                    : 'Use kebab-case format (e.g., "gcash", "bank-transfer")'
-                  }
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-black mb-2">Account Number/Phone *</label>
+                <label className={labelCls}>Account Number / Details</label>
                 <input
                   type="text"
                   value={formData.account_number}
                   onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="09XX XXX XXXX or Account: 1234-5678-9012"
+                  className={inputCls}
+                  placeholder="e.g. 0905 293 1408 or Cash"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-2">Account Name *</label>
+                <label className={labelCls}>Account Name / Label</label>
                 <input
                   type="text"
                   value={formData.account_name}
                   onChange={(e) => setFormData({ ...formData, account_name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="M&C Bakehouse"
+                  className={inputCls}
+                  placeholder="e.g. Afoodable Bites"
                 />
               </div>
+            </div>
 
-              <div>
-                <ImageUpload
-                  currentImage={formData.qr_code_url}
-                  onImageChange={(imageUrl) => setFormData({ ...formData, qr_code_url: imageUrl || '' })}
-                />
-              </div>
+            <div>
+              <label className={labelCls}>QR Code Image (Optional for Cash)</label>
+              <ImageUpload
+                currentImage={formData.qr_code_url}
+                onImageChange={(imageUrl) => setFormData({ ...formData, qr_code_url: imageUrl || '' })}
+              />
+              <p className="text-xs text-zinc-500 mt-2">
+                Upload your GCash or Maya QR code image so customers can scan it directly.
+              </p>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div>
-                <label className="block text-sm font-medium text-black mb-2">Sort Order</label>
+                <label className={labelCls}>Display Order</label>
                 <input
                   type="number"
                   value={formData.sort_order}
                   onChange={(e) => setFormData({ ...formData, sort_order: Number(e.target.value) })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="0"
+                  className={inputCls}
+                  placeholder="1"
+                  min="0"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Lower numbers appear first in the checkout
-                </p>
               </div>
 
-              <div className="flex items-center">
-                <label className="flex items-center space-x-2">
+              <div className="flex items-center pt-6">
+                <label className="flex items-center space-x-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formData.active}
                     onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    className="w-4 h-4 rounded accent-amber-500"
                   />
-                  <span className="text-sm font-medium text-black">Active Payment Method</span>
+                  <span className="text-sm font-semibold text-zinc-200">Active / Enable Method</span>
                 </label>
               </div>
             </div>
-          </div>
+
+            <div className="flex justify-end space-x-3 pt-4 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={isSaving}
+                className="px-5 py-2.5 border border-zinc-700 text-zinc-300 hover:text-white rounded-xl text-sm font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-bold text-sm rounded-xl hover:from-amber-400 hover:to-red-400 shadow-md transition flex items-center space-x-2 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSaving ? 'Saving...' : 'Save Payment Method'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     );
@@ -245,100 +281,207 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
 
   // List View
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-zinc-950 text-white pb-16">
+      {/* Top Navbar */}
+      <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <button
+                type="button"
                 onClick={onBack}
-                className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors duration-200"
+                className="flex items-center space-x-1.5 text-zinc-400 hover:text-amber-400 transition text-sm font-medium"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4" />
                 <span>Dashboard</span>
               </button>
-              <h1 className="text-2xl font-playfair font-semibold text-black">Payment Methods</h1>
+              <span className="text-zinc-700">|</span>
+              <div className="flex items-center space-x-2">
+                <CreditCard className="w-5 h-5 text-amber-500" />
+                <h1 className="text-lg sm:text-xl font-bold text-white">
+                  Payment Methods & COD
+                </h1>
+              </div>
             </div>
+
             <button
+              type="button"
               onClick={handleAddMethod}
-              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs sm:text-sm font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 shadow transition flex items-center space-x-1.5"
             >
-              <Plus className="h-4 w-4" />
-              <span>Add Payment Method</span>
+              <Plus className="w-4 h-4" />
+              <span>Add Method</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="p-6">
-            <h2 className="text-lg font-playfair font-medium text-black mb-4">Payment Methods</h2>
-            
-            {paymentMethods.length === 0 ? (
-              <div className="text-center py-8">
-                <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 mb-4">No payment methods found</p>
-                <button
-                  onClick={handleAddMethod}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
-                >
-                  Add First Payment Method
-                </button>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        
+        {/* Special Featured Banner: Cash on Delivery (COD) Toggle */}
+        <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-amber-950/40 border-2 border-amber-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
+            <div className="flex items-start space-x-4">
+              <div className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl border border-amber-500/30 flex-shrink-0">
+                <Banknote className="w-8 h-8" />
               </div>
-            ) : (
-              <div className="space-y-4">
-                {paymentMethods.map((method) => (
-                  <div
-                    key={method.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
+              <div>
+                <div className="flex items-center space-x-2 flex-wrap">
+                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
+                    Cash on Delivery (COD) / Counter
+                  </h2>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                    isCodActive 
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
+                      : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                  }`}>
+                    {isCodActive ? '● COD ENABLED' : '○ COD DISABLED'}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-xl">
+                  Allow customers to place orders and pay with physical cash upon receiving their delivery or at the dining counter.
+                </p>
+              </div>
+            </div>
+
+            {/* One-Click COD Toggle Switch */}
+            <div className="flex items-center space-x-3 self-end sm:self-center">
+              <button
+                type="button"
+                onClick={handleToggleCod}
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg transition-all flex items-center space-x-2 ${
+                  isCodActive
+                    ? 'bg-emerald-500 text-black hover:bg-emerald-400'
+                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700'
+                }`}
+              >
+                <Power className="w-4 h-4" />
+                <span>{isCodActive ? 'Turn COD OFF' : 'Turn COD ON'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* All Payment Methods Cards */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                <CreditCard className="w-4 h-4 text-amber-500" />
+                <span>All Payment Options ({paymentMethods.length})</span>
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Enable, disable, or edit account numbers and QR codes for GCash, Maya, Bank Transfer, and Cash.
+              </p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-zinc-800">
+            {paymentMethods.map((method) => {
+              const isCod = method.id === 'payment-cod' || method.id === 'cod';
+              return (
+                <div
+                  key={method.id}
+                  className={`p-5 sm:p-6 hover:bg-zinc-800/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                    !method.active ? 'opacity-60 bg-zinc-950/40' : ''
+                  }`}
+                >
+                  <div className="flex items-start space-x-4 flex-1 min-w-0">
+                    {/* Method Icon / QR Thumbnail */}
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 shadow">
+                      {isCod ? (
+                        <Banknote className="w-8 h-8 text-amber-400" />
+                      ) : method.qr_code_url ? (
                         <img
                           src={method.qr_code_url}
-                          alt={`${method.name} QR Code`}
-                          className="w-16 h-16 rounded-lg border border-gray-300 object-cover"
+                          alt={method.name}
+                          className="w-full h-full object-cover"
                           onError={(e) => {
-                            e.currentTarget.src = 'https://images.pexels.com/photos/8867482/pexels-photo-8867482.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop';
+                            e.currentTarget.style.display = 'none';
                           }}
                         />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-black">{method.name}</h3>
-                        <p className="text-sm text-gray-600">{method.account_number}</p>
-                        <p className="text-sm text-gray-500">Account: {method.account_name}</p>
-                        <p className="text-xs text-gray-400">ID: {method.id} • Order: #{method.sort_order}</p>
-                      </div>
+                      ) : (
+                        <QrCode className="w-7 h-7 text-zinc-500" />
+                      )}
                     </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        method.active 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {method.active ? 'Active' : 'Inactive'}
-                      </span>
-                      
+
+                    {/* Method Info */}
+                    <div className="flex-1 min-w-0 space-y-0.5">
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        <h4 className="font-bold text-white text-base truncate">
+                          {method.name}
+                        </h4>
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            method.active
+                              ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-800'
+                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                          }`}
+                        >
+                          {method.active ? '● Active' : '○ Inactive'}
+                        </span>
+                      </div>
+
+                      {method.account_number && (
+                        <p className="text-xs font-mono font-bold text-amber-400">
+                          {method.account_number}
+                        </p>
+                      )}
+
+                      {method.account_name && (
+                        <p className="text-xs text-zinc-400">
+                          Account: {method.account_name}
+                        </p>
+                      )}
+
+                      <p className="text-[10px] text-zinc-500">
+                        Sort Order #{method.sort_order}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions & Toggle */}
+                  <div className="flex items-center space-x-2 self-end sm:self-center">
+                    {/* Active/Inactive Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => togglePaymentMethod(method.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                        method.active
+                          ? 'bg-zinc-800 text-emerald-400 hover:bg-zinc-700 border border-emerald-800'
+                          : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700 border border-zinc-700'
+                      }`}
+                      title={method.active ? 'Click to deactivate' : 'Click to activate'}
+                    >
+                      <Power className="w-3.5 h-3.5" />
+                      <span>{method.active ? 'Active' : 'Enable'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleEditMethod(method)}
+                      className="p-2 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
+                      title="Edit"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+
+                    {!isCod && (
                       <button
-                        onClick={() => handleEditMethod(method)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors duration-200"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      
-                      <button
-                        onClick={() => handleDeleteMethod(method.id)}
-                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
+                        type="button"
+                        onClick={() => handleDeleteMethod(method.id, method.name)}
+                        className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition"
+                        title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-                    </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

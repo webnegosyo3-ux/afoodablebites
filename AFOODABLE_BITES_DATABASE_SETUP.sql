@@ -283,14 +283,17 @@ FROM menu_items m
 WHERE m.category IN ('sizzling-meals', 'filipino-soups');
 
 -- ------------------------------------------------------------------------------
--- 11. INSERT PAYMENT METHODS (GCash / InstaPay)
+-- 11. INSERT PAYMENT METHODS (GCash / InstaPay & Cash on Delivery)
 -- ------------------------------------------------------------------------------
 INSERT INTO payment_methods (id, name, account_number, account_name, qr_code_url, active, sort_order) VALUES
-  ('payment-gcash', 'GCash / InstaPay', '0905 293 1408', 'Afoodable Bites', '/images/payment-qr/gcash-qr-code.jpg', true, 1)
+  ('payment-gcash', 'GCash / InstaPay', '0905 293 1408', 'Afoodable Bites', '/images/payment-qr/gcash-qr-code.jpg', true, 1),
+  ('payment-cod', 'Cash on Delivery (COD) / Counter', 'Cash Payment', 'Pay upon delivery / at counter', '', true, 2)
 ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name,
   account_number = EXCLUDED.account_number, 
   account_name = EXCLUDED.account_name, 
-  qr_code_url = EXCLUDED.qr_code_url;
+  qr_code_url = EXCLUDED.qr_code_url,
+  active = EXCLUDED.active;
 
 -- ==============================================================================
 -- 12. STORAGE BUCKET FOR ADMIN IMAGE UPLOADS

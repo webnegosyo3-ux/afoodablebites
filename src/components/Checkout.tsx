@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2 } from 'lucide-react';
 import { CartItem, ServiceType } from '../types';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
 
 interface CheckoutProps {
   cartItems: CartItem[];
@@ -9,6 +10,7 @@ interface CheckoutProps {
 }
 
 const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) => {
+  const { activePaymentMethods } = usePaymentMethods();
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [customerName, setCustomerName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
@@ -19,9 +21,24 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [customTime, setCustomTime] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Selected payment method ID
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
+    return activePaymentMethods.length > 0 ? activePaymentMethods[0].id : 'payment-gcash';
+  });
+
+  // Keep selectedPaymentId valid if active methods update
+  React.useEffect(() => {
+    if (activePaymentMethods.length > 0 && !activePaymentMethods.some(m => m.id === selectedPaymentId)) {
+      setSelectedPaymentId(activePaymentMethods[0].id);
+    }
+  }, [activePaymentMethods, selectedPaymentId]);
+
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
+
+  const currentMethod = activePaymentMethods.find(m => m.id === selectedPaymentId) || activePaymentMethods[0];
+  const isCod = currentMethod ? (currentMethod.id === 'payment-cod' || currentMethod.id === 'cod' || currentMethod.name.toLowerCase().includes('cash')) : false;
 
   const handleProceedToPayment = () => {
     setStep('payment');
@@ -35,6 +52,10 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     const serviceName = serviceType === 'dine-in'
       ? 'Dine In'
       : serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
+
+    const paymentText = isCod
+      ? 'Cash on Delivery (COD) / Pay at Counter (No advance payment)'
+      : `${currentMethod?.name || 'GCash'} (Payment Screenshot Attached)`;
 
     const orderDetails = `
 AFOODABLE BITES ORDER 🍲
@@ -66,12 +87,11 @@ ${cartItems.map(item => {
 
 TOTAL: ₱${totalPrice}
 
-Payment: GCash / InstaPay
-Payment Screenshot: Please attach your payment receipt screenshot
+Payment Method: ${paymentText}
 
 ${notes ? `Special Notes: ${notes}` : ''}
 
-Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
+Please confirm this order to proceed. Thank you for dining with Afoodable Bites! Always Serving Hot! 🔥
     `.trim();
 
     const encodedMessage = encodeURIComponent(orderDetails);
@@ -193,12 +213,12 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
                 </div>
               </div>
 
-              {/* Dine-in Notice (NO TABLE NUMBER as requested) */}
+              {/* Dine-in Notice */}
               {serviceType === 'dine-in' && (
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-sm text-amber-900">
                   <p className="font-bold">🍽️ Dine-In Order</p>
                   <p className="text-xs text-amber-800 mt-1">
-                    Just complete your order and show your payment receipt at the counter when you arrive. Table seating is open and ready!
+                    Just complete your order and show your payment details at the counter when you arrive. Table seating is open and ready!
                   </p>
                 </div>
               )}
@@ -253,8 +273,8 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Enter your complete delivery address"
-                      rows={3}
+                      placeholder="House/Unit #, Street, Barangay, City"
+                      rows={2}
                       required
                     />
                   </div>
@@ -266,7 +286,7 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
                       value={landmark}
                       onChange={(e) => setLandmark(e.target.value)}
                       className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
-                      placeholder="e.g. Near 7-Eleven, Beside basketball court"
+                      placeholder="Nearby school, church, mall, etc."
                     />
                   </div>
                 </>
@@ -274,7 +294,7 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
 
               {/* Special Instructions */}
               <div>
-                <label className="block text-sm font-bold text-zinc-800 mb-1.5">Special Instructions (Optional)</label>
+                <label className="block text-sm font-bold text-zinc-800 mb-1.5">Special Requests (Optional)</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -318,72 +338,139 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* GCash Payment Column */}
-        <div className="bg-white rounded-2xl shadow-md p-6 border border-zinc-200">
-          <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 mb-6">💳 GCash / InstaPay</h2>
+        {/* Payment Methods Selection & Info Column */}
+        <div className="bg-white rounded-2xl shadow-md p-6 border border-zinc-200 space-y-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-zinc-900">Choose Payment Method</h2>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 mb-6 border-2 border-blue-300">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow">
-                <span className="text-white font-black text-xl">G</span>
-              </div>
-              <div>
-                <h3 className="font-bold text-blue-900 text-lg">GCash Payment</h3>
-                <p className="text-xs text-blue-700">Instant QR Code Scanning</p>
-              </div>
-            </div>
+          {/* Payment Method Selector Tabs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {activePaymentMethods.map((method) => {
+              const isMethodCod = method.id === 'payment-cod' || method.id === 'cod' || method.name.toLowerCase().includes('cash');
+              const isSelected = method.id === selectedPaymentId;
+              return (
+                <button
+                  key={method.id}
+                  type="button"
+                  onClick={() => setSelectedPaymentId(method.id)}
+                  className={`p-3.5 rounded-xl border-2 transition-all flex items-center space-x-3 text-left ${
+                    isSelected
+                      ? 'border-amber-500 bg-amber-50 shadow-md ring-2 ring-amber-400/30'
+                      : 'border-zinc-200 hover:border-zinc-300 bg-white'
+                  }`}
+                >
+                  <div className={`p-2 rounded-lg flex-shrink-0 ${
+                    isMethodCod ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {isMethodCod ? <Banknote className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-sm text-zinc-900 truncate">{method.name}</p>
+                    <p className="text-[11px] text-zinc-500 truncate">
+                      {isMethodCod ? 'Pay upon receiving' : method.account_number}
+                    </p>
+                  </div>
+                  {isSelected && <CheckCircle2 className="w-4 h-4 text-amber-600 flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
 
-            <div className="bg-white rounded-xl p-4 mb-4 shadow-inner">
-              <p className="text-xl font-black text-zinc-900 mb-4 text-center">
-                Amount to Pay: <span className="text-blue-600">₱{totalPrice}</span>
-              </p>
-
-              {/* QR Code */}
-              <div className="flex justify-center mb-4">
-                <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-3 flex items-center justify-center">
-                  <img
-                    src="/images/payment-qr/gcash-qr-code.jpg"
-                    alt="GCash QR Code"
-                    className="w-full h-full object-contain"
-                  />
+          {/* Selected Method Display Details */}
+          {isCod ? (
+            /* Cash on Delivery Details Box */
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-300 text-zinc-900">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-amber-500 text-white rounded-full flex items-center justify-center shadow">
+                  <Banknote className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-amber-950 text-lg">Cash on Delivery / Counter</h3>
+                  <p className="text-xs text-amber-800">No advance payment required</p>
                 </div>
               </div>
 
-              <div className="text-center">
-                <p className="text-sm text-blue-900 font-bold mb-1">📱 Scan with GCash App</p>
-                <p className="text-xs text-zinc-500">or send manually to the number below</p>
+              <div className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-amber-100 text-center">
+                <p className="text-sm font-semibold text-zinc-600">Total Cash to Prepare:</p>
+                <p className="text-3xl font-black text-amber-600 my-1">₱{totalPrice}</p>
+                <p className="text-xs text-zinc-500">
+                  Please prepare exact amount if possible upon {serviceType === 'delivery' ? 'rider arrival' : 'pickup / dining'}
+                </p>
+              </div>
+
+              <div className="bg-amber-100/70 rounded-xl p-4 text-xs sm:text-sm text-amber-900 space-y-1.5">
+                <p className="font-bold flex items-center space-x-1">
+                  <span>✅</span>
+                  <span>Instant Confirmation</span>
+                </p>
+                <p>Your order will be prepared as soon as confirmed via Messenger.</p>
               </div>
             </div>
+          ) : (
+            /* Digital Wallet (GCash/Maya) Details Box */
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border-2 border-blue-300">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow">
+                  <span className="text-white font-black text-xl">
+                    {currentMethod?.name.charAt(0) || 'G'}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-blue-900 text-lg">{currentMethod?.name || 'GCash Payment'}</h3>
+                  <p className="text-xs text-blue-700">QR Code Scanning & Transfer</p>
+                </div>
+              </div>
 
-            {/* Account Details */}
-            <div className="bg-white rounded-xl p-4 space-y-2 text-sm border border-blue-100">
-              <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
-                <span className="text-zinc-500">Payment Option:</span>
-                <span className="font-bold text-blue-900">GCash / InstaPay</span>
+              <div className="bg-white rounded-xl p-4 mb-4 shadow-inner">
+                <p className="text-xl font-black text-zinc-900 mb-4 text-center">
+                  Amount to Pay: <span className="text-blue-600">₱{totalPrice}</span>
+                </p>
+
+                {/* QR Code */}
+                {currentMethod?.qr_code_url && (
+                  <div className="flex justify-center mb-4">
+                    <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-3 flex items-center justify-center">
+                      <img
+                        src={currentMethod.qr_code_url}
+                        alt={`${currentMethod.name} QR Code`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.src = '/images/payment-qr/gcash-qr-code.jpg';
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-center">
+                  <p className="text-sm text-blue-900 font-bold mb-1">📱 Scan with your App</p>
+                  <p className="text-xs text-zinc-500">or send manually to the number below</p>
+                </div>
               </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
-                <span className="text-zinc-500">Mobile Number:</span>
-                <span className="font-mono font-bold text-zinc-900">0905 293 1408</span>
+
+              {/* Account Details */}
+              <div className="bg-white rounded-xl p-4 space-y-2 text-sm border border-blue-100">
+                <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
+                  <span className="text-zinc-500">Account Number:</span>
+                  <span className="font-mono font-bold text-zinc-900">{currentMethod?.account_number || '0905 293 1408'}</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-zinc-500">Account Name:</span>
+                  <span className="font-bold text-zinc-900">{currentMethod?.account_name || 'Afoodable Bites'}</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center py-1.5">
-                <span className="text-zinc-500">Account Name:</span>
-                <span className="font-bold text-zinc-900">Afoodable Bites</span>
+
+              {/* Payment Proof Notice */}
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mt-4">
+                <h4 className="font-bold text-amber-900 mb-1.5 flex items-center text-sm">
+                  <span className="text-lg mr-2">📸</span>
+                  Screenshot Payment Receipt
+                </h4>
+                <p className="text-xs text-zinc-700">
+                  Attach your transaction screenshot in the Messenger chat so we can verify your payment immediately!
+                </p>
               </div>
             </div>
-          </div>
-
-          {/* Payment Proof Notice */}
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
-            <h4 className="font-bold text-amber-900 mb-2 flex items-center text-sm">
-              <span className="text-lg mr-2">📸</span>
-              Screenshot Payment Receipt
-            </h4>
-            <ol className="text-xs sm:text-sm text-zinc-700 space-y-1.5 list-decimal list-inside">
-              <li>Scan the QR code and pay <strong className="text-zinc-900">₱{totalPrice}</strong></li>
-              <li>Take a screenshot of your successful transaction</li>
-              <li>Attach the screenshot when the Messenger chat opens</li>
-            </ol>
-          </div>
+          )}
         </div>
 
         {/* Final Order Review & Messenger Submission */}
@@ -409,6 +496,9 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
                   <span className="text-zinc-500">Pickup Time:</span> {pickupTime === 'custom' ? customTime : `${pickupTime} minutes`}
                 </p>
               )}
+              <p className="text-zinc-700 pt-1 border-t border-amber-200/50 mt-1">
+                <span className="text-zinc-500">Payment:</span> <strong className="text-zinc-900">{currentMethod?.name}</strong>
+              </p>
             </div>
 
             <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
@@ -446,7 +536,10 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
           </button>
 
           <p className="text-xs text-zinc-500 text-center mt-3">
-            You will be redirected to Facebook Messenger with your order summary pre-filled. Please attach your GCash payment screenshot to confirm!
+            {isCod 
+              ? 'You will be redirected to Facebook Messenger with your order details pre-filled. Pay in cash when your food arrives!'
+              : 'You will be redirected to Facebook Messenger with your order summary pre-filled. Please attach your payment screenshot to confirm!'
+            }
           </p>
         </div>
       </div>
