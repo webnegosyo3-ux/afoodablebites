@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp, Package, Users, Lock, FolderOpen, CreditCard, Settings } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp, Package, Users, Lock, FolderOpen, CreditCard, Settings, Sparkles } from 'lucide-react';
 import { MenuItem, Variation, AddOn } from '../types';
 import { addOnCategories } from '../data/menuData';
 import { useMenu } from '../hooks/useMenu';
@@ -8,6 +8,7 @@ import ImageUpload from './ImageUpload';
 import CategoryManager from './CategoryManager';
 import PaymentMethodManager from './PaymentMethodManager';
 import SiteSettingsManager from './SiteSettingsManager';
+import WelcomePageManager from './WelcomePageManager';
 
 const AdminDashboard: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -17,7 +18,7 @@ const AdminDashboard: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   const { menuItems, loading, addMenuItem, updateMenuItem, deleteMenuItem } = useMenu();
   const { categories } = useCategories();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'settings' | 'welcome'>('dashboard');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -960,6 +961,11 @@ const AdminDashboard: React.FC = () => {
     return <PaymentMethodManager onBack={() => setCurrentView('dashboard')} />;
   }
 
+  // Welcome Page View
+  if (currentView === 'welcome') {
+    return <WelcomePageManager onBack={() => setCurrentView('dashboard')} />;
+  }
+
   // Site Settings View
   if (currentView === 'settings') {
     return (
@@ -1086,6 +1092,16 @@ const AdminDashboard: React.FC = () => {
               >
                 <Package className="h-5 w-5 text-gray-400" />
                 <span className="font-medium text-gray-900">Manage Menu Items</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('welcome')}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-amber-50 rounded-lg transition-colors duration-200 border border-amber-200 bg-amber-50/40"
+              >
+                <Sparkles className="h-5 w-5 text-amber-500" />
+                <div>
+                  <span className="font-bold text-gray-900 block">Welcome Page & Promo Slides</span>
+                  <span className="text-xs text-gray-500">Edit slides, promo badges, titles, and order button</span>
+                </div>
               </button>
               <button
                 onClick={() => setCurrentView('categories')}

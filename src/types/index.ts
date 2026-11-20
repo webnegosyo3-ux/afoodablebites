@@ -79,3 +79,22 @@ export interface SiteSettings {
   currency: string;
   currency_code: string;
 }
+
+// Welcome Page & Promo Slide Types
+export interface WelcomeSlide {
+  id: string;
+  badge: string;
+  badgeColor: string;
+  title: string;
+  subtitle: string;
+  tagline: string;
+  image: string;
+}
+
+export interface WelcomePageConfig {
+  tagline: string;
+  buttonText: string;
+  slideDuration: number;
+  autoSlide: boolean;
+  slides: WelcomeSlide[];
+}
