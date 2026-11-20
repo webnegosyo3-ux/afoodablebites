@@ -4,7 +4,7 @@ import { WelcomePageConfig, WelcomeSlide } from '../types';
 
 export const DEFAULT_WELCOME_CONFIG: WelcomePageConfig = {
   tagline: 'Always Serving Hot!',
-  buttonText: 'ORDER NOW',
+  buttonText: 'TAP TO ORDER',
   slideDuration: 3500,
   autoSlide: true,
   slides: [
@@ -65,9 +65,11 @@ export const useWelcomePage = () => {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && Array.isArray(parsed.slides) && parsed.slides.length > 0) {
+          const btnText = parsed.buttonText === 'ORDER NOW' ? 'TAP TO ORDER' : (parsed.buttonText || 'TAP TO ORDER');
           return {
             ...DEFAULT_WELCOME_CONFIG,
-            ...parsed
+            ...parsed,
+            buttonText: btnText
           };
         }
       }

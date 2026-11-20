@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import {
   Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp,
-  Package, Users, Lock, FolderOpen, CreditCard, Settings, Sparkles, Flame
+  Package, Users, Lock, FolderOpen, CreditCard, Settings, Sparkles, Flame,
+  ShoppingBag
 } from 'lucide-react';
 import { MenuItem, Variation, AddOn } from '../types';
 import { addOnCategories } from '../data/menuData';
 import { useMenu } from '../hooks/useMenu';
 import { useCategories } from '../hooks/useCategories';
+import { useOrders } from '../hooks/useOrders';
 import ImageUpload from './ImageUpload';
 import CategoryManager from './CategoryManager';
 import PaymentMethodManager from './PaymentMethodManager';
 import SiteSettingsManager from './SiteSettingsManager';
 import WelcomePageManager from './WelcomePageManager';
+import OrdersManager from './OrdersManager';
 
 // ── Shared Topbar ──────────────────────────────────────────────────────────────
 const AdminTopbar: React.FC<{
@@ -84,8 +87,9 @@ const AdminDashboard: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   const { menuItems, loading, addMenuItem, updateMenuItem, deleteMenuItem } = useMenu();
   const { categories } = useCategories();
+  const { orders } = useOrders();
   const [currentView, setCurrentView] = useState<
-    'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'settings' | 'welcome'
+    'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'settings' | 'welcome' | 'orders'
   >('dashboard');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -610,6 +614,7 @@ const AdminDashboard: React.FC = () => {
   }
 
   // ── SUBVIEWS (delegate) ──────────────────────────────────────────────────────
+  if (currentView === 'orders') return <OrdersManager onBack={() => setCurrentView('dashboard')} />;
   if (currentView === 'categories') return <CategoryManager onBack={() => setCurrentView('dashboard')} />;
   if (currentView === 'payments') return <PaymentMethodManager onBack={() => setCurrentView('dashboard')} />;
   if (currentView === 'welcome') return <WelcomePageManager onBack={() => setCurrentView('dashboard')} />;
@@ -656,17 +661,32 @@ const AdminDashboard: React.FC = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total Items', value: totalItems, icon: Package, color: 'from-amber-500 to-orange-500' },
-            { label: 'Available', value: availableItems, icon: TrendingUp, color: 'from-emerald-500 to-green-600' },
-            { label: 'Popular', value: popularItems, icon: Coffee, color: 'from-orange-500 to-red-500' },
-            { label: 'Status', value: 'Online', icon: Users, color: 'from-blue-500 to-indigo-600' },
-          ].map(({ label, value, icon: Icon, color }) => (
+            { 
+              label: 'Customer Orders', 
+              value: orders.length, 
+              icon: ShoppingBag, 
+              color: 'from-amber-500 to-orange-600',
+              badge: orders.filter(o => o.status === 'pending').length > 0 
+                ? `${orders.filter(o => o.status === 'pending').length} New` 
+                : undefined
+            },
+            { label: 'Total Items', value: totalItems, icon: Package, color: 'from-orange-500 to-red-500' },
+            { label: 'Available Items', value: availableItems, icon: TrendingUp, color: 'from-emerald-500 to-green-600' },
+            { label: 'Popular Dishes', value: popularItems, icon: Coffee, color: 'from-blue-500 to-indigo-600' },
+          ].map(({ label, value, icon: Icon, color, badge }) => (
             <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex items-center space-x-4">
               <div className={`bg-gradient-to-br ${color} p-3 rounded-xl shadow-lg flex-shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{label}</p>
+              <div className="min-w-0">
+                <div className="flex items-center space-x-1.5">
+                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider truncate">{label}</p>
+                  {badge && (
+                    <span className="text-[10px] font-black bg-amber-500 text-black px-1.5 py-0.2 rounded-full animate-pulse">
+                      {badge}
+                    </span>
+                  )}
+                </div>
                 <p className="text-2xl font-black text-white mt-0.5">{value}</p>
               </div>
             </div>
@@ -682,22 +702,38 @@ const AdminDashboard: React.FC = () => {
             </h3>
             <div className="space-y-1">
               {[
+                { 
+                  label: 'Customer Orders', 
+                  icon: ShoppingBag, 
+                  action: () => setCurrentView('orders'), 
+                  highlight: true,
+                  badge: orders.filter(o => o.status === 'pending').length > 0 
+                    ? `${orders.filter(o => o.status === 'pending').length} Pending` 
+                    : `${orders.length} Total`
+                },
                 { label: 'Add New Menu Item', icon: Plus, action: handleAddItem, highlight: false },
                 { label: 'Manage Menu Items', icon: Package, action: () => setCurrentView('items'), highlight: false },
-                { label: 'Welcome Page & Promo Slides', icon: Sparkles, action: () => setCurrentView('welcome'), highlight: true },
+                { label: 'Welcome Page & Promo Slides', icon: Sparkles, action: () => setCurrentView('welcome'), highlight: false },
                 { label: 'Manage Categories', icon: FolderOpen, action: () => setCurrentView('categories'), highlight: false },
-                { label: 'Payment Methods', icon: CreditCard, action: () => setCurrentView('payments'), highlight: false },
+                { label: 'Payment Methods & COD', icon: CreditCard, action: () => setCurrentView('payments'), highlight: false },
                 { label: 'Site Settings', icon: Settings, action: () => setCurrentView('settings'), highlight: false },
-              ].map(({ label, icon: Icon, action, highlight }) => (
+              ].map(({ label, icon: Icon, action, highlight, badge }) => (
                 <button key={label} onClick={action}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all ${
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all ${
                     highlight
-                      ? 'bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20'
+                      ? 'bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 shadow-sm'
                       : 'hover:bg-zinc-800'
                   }`}
                 >
-                  <Icon className={`h-4 w-4 flex-shrink-0 ${highlight ? 'text-amber-400' : 'text-zinc-500'}`} />
-                  <span className={`text-sm font-medium ${highlight ? 'text-amber-300' : 'text-zinc-300'}`}>{label}</span>
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <Icon className={`h-4 w-4 flex-shrink-0 ${highlight ? 'text-amber-400' : 'text-zinc-500'}`} />
+                    <span className={`text-sm font-medium ${highlight ? 'text-amber-300 font-bold' : 'text-zinc-300'}`}>{label}</span>
+                  </div>
+                  {badge && (
+                    <span className="text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                      {badge}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

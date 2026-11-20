@@ -310,7 +310,7 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
                   type="text"
                   value={generalSettings.buttonText}
                   onChange={(e) => setGeneralSettings(prev => ({ ...prev, buttonText: e.target.value }))}
-                  placeholder="ORDER NOW"
+                  placeholder="TAP TO ORDER"
                   className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                 />
                 <p className="text-xs text-gray-400 mt-1">Button to proceed to menus</p>

@@ -175,7 +175,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onOrderNow }) => {
         )}
       </div>
 
-      {/* Sleek, Touch-Friendly "ORDER NOW" Button */}
+      {/* Sleek, Touch-Friendly "TAP TO ORDER" Button */}
       <div className="w-full py-4 sm:py-5 px-4 z-20 flex justify-center">
         <button
           type="button"
@@ -184,7 +184,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onOrderNow }) => {
         >
           <Flame className="w-5 h-5 text-yellow-200 animate-bounce" />
           <span className="tracking-wide uppercase drop-shadow">
-            {config.buttonText || 'ORDER NOW'}
+            {config.buttonText || 'TAP TO ORDER'}
           </span>
         </button>
       </div>

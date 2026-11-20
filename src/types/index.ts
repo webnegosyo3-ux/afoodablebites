@@ -98,3 +98,24 @@ export interface WelcomePageConfig {
   autoSlide: boolean;
   slides: WelcomeSlide[];
 }
+
+// Admin Orders Types
+export type OrderStatus = 'pending' | 'preparing' | 'completed' | 'cancelled';
+
+export interface AdminOrder {
+  id: string;
+  customerName: string;
+  contactNumber: string;
+  serviceType: 'dine-in' | 'pickup' | 'delivery';
+  address?: string;
+  landmark?: string;
+  pickupTime?: string;
+  paymentMethod: string;
+  total: number;
+  items: CartItem[];
+  notes?: string;
+  status: OrderStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+

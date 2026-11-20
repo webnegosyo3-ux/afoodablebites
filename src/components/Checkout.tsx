@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2 } from 'lucide-react';
 import { CartItem, ServiceType } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { useOrders } from '../hooks/useOrders';
 
 interface CheckoutProps {
   cartItems: CartItem[];
@@ -9,8 +10,11 @@ interface CheckoutProps {
   onBack: () => void;
 }
 
+const FB_PAGE_MESSENGER_ID = '61595737646110';
+
 const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) => {
   const { activePaymentMethods } = usePaymentMethods();
+  const { createOrder } = useOrders();
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [customerName, setCustomerName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
@@ -95,7 +99,25 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
     `.trim();
 
     const encodedMessage = encodeURIComponent(orderDetails);
-    const messengerUrl = `https://m.me/822055400987696?text=${encodedMessage}`;
+    const messengerUrl = `https://m.me/${FB_PAGE_MESSENGER_ID}?text=${encodedMessage}`;
+
+    // Record order in Admin Dashboard & Database
+    try {
+      createOrder({
+        customerName,
+        contactNumber,
+        serviceType,
+        address: serviceType === 'delivery' ? address : undefined,
+        landmark: serviceType === 'delivery' ? landmark : undefined,
+        pickupTime: timeInfo || undefined,
+        paymentMethod: isCod ? 'Cash on Delivery (COD)' : (currentMethod?.name || 'GCash'),
+        total: totalPrice,
+        items: cartItems,
+        notes: notes || undefined
+      });
+    } catch (err) {
+      console.warn('Could not save order record:', err);
+    }
 
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {

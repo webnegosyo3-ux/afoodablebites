@@ -227,7 +227,7 @@ const Slideshow: React.FC<SlideshowProps> = ({ onOrderNow }) => {
           </button>
         </div>
 
-        {/* PROMINENT "ORDER NOW" CALL TO ACTION BUTTON */}
+        {/* PROMINENT "TAP TO ORDER" CALL TO ACTION BUTTON */}
         <div className="mt-8 text-center">
           <button
             type="button"
@@ -235,7 +235,7 @@ const Slideshow: React.FC<SlideshowProps> = ({ onOrderNow }) => {
             className="group relative inline-flex items-center justify-center space-x-3 px-8 sm:px-12 py-4 sm:py-5 text-xl sm:text-2xl font-black rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-2xl hover:from-amber-400 hover:via-orange-400 hover:to-red-400 transition-all duration-300 transform hover:scale-105 active:scale-95 ring-4 ring-amber-400/30"
           >
             <Flame className="w-7 h-7 text-yellow-200 animate-bounce" />
-            <span className="tracking-wide uppercase drop-shadow-md">ORDER NOW</span>
+            <span className="tracking-wide uppercase drop-shadow-md">TAP TO ORDER</span>
             <Utensils className="w-6 h-6 text-yellow-200" />
             <ArrowDown className="w-6 h-6 text-yellow-100 group-hover:translate-y-1 transition-transform" />
           </button>
