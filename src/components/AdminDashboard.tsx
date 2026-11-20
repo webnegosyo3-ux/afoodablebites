@@ -184,7 +184,7 @@ const AdminDashboard: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'affordable@admin125') {
+    if (password === 'admin@afoodablebites') {
       setIsAuthenticated(true); localStorage.setItem('beracah_admin_auth', 'true'); setLoginError('');
     } else { setLoginError('Incorrect password. Try again.'); }
   };
