@@ -1,11 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const rawUrl = import.meta.env.VITE_SUPABASE_URL;
+const rawAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+export const isSupabaseConfigured = Boolean(
+  rawUrl && 
+  rawAnonKey && 
+  !rawUrl.includes('your_supabase') &&
+  rawUrl.startsWith('http')
+);
+
+// Fallback to dummy values if not configured so the app continues to run seamlessly
+const supabaseUrl = isSupabaseConfigured ? rawUrl! : 'https://placeholder.supabase.co';
+const supabaseAnonKey = isSupabaseConfigured ? rawAnonKey! : 'placeholder-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

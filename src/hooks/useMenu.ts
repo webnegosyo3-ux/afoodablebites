@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MenuItem } from '../types';
+import { DEFAULT_MENU_ITEMS } from '../data/defaultMenu';
 
 export const useMenu = () => {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMenuItems = async () => {
+    if (!isSupabaseConfigured) {
+      setMenuItems(DEFAULT_MENU_ITEMS);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       
-      // Fetch menu items with their variations and add-ons
       const { data: items, error: itemsError } = await supabase
         .from('menu_items')
         .select(`
@@ -23,8 +29,13 @@ export const useMenu = () => {
 
       if (itemsError) throw itemsError;
 
-      const formattedItems: MenuItem[] = items?.map(item => {
-        // Calculate if discount is currently active
+      if (!items || items.length === 0) {
+        // Fall back to requested default Afoodable Bites menu
+        setMenuItems(DEFAULT_MENU_ITEMS);
+        return;
+      }
+
+      const formattedItems: MenuItem[] = items.map(item => {
         const now = new Date();
         const discountStart = item.discount_start_date ? new Date(item.discount_start_date) : null;
         const discountEnd = item.discount_end_date ? new Date(item.discount_end_date) : null;
@@ -33,7 +44,6 @@ export const useMenu = () => {
           (!discountStart || now >= discountStart) && 
           (!discountEnd || now <= discountEnd);
         
-        // Calculate effective price
         const effectivePrice = isDiscountActive && item.discount_price ? item.discount_price : item.base_price;
 
         return {
@@ -64,13 +74,14 @@ export const useMenu = () => {
             category: a.category
           })) || []
         };
-      }) || [];
+      });
 
       setMenuItems(formattedItems);
       setError(null);
     } catch (err) {
-      console.error('Error fetching menu items:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch menu items');
+      console.warn('Error fetching menu items from Supabase, using defaults:', err);
+      setMenuItems(DEFAULT_MENU_ITEMS);
+      setError(err instanceof Error ? err.message : 'Using default menu items');
     } finally {
       setLoading(false);
     }
@@ -78,8 +89,7 @@ export const useMenu = () => {
 
   const addMenuItem = async (item: Omit<MenuItem, 'id'>) => {
     try {
-      // Insert menu item
-      const { data: menuItem, error: itemError } = await supabase
+      const { data, error: insertError } = await supabase
         .from('menu_items')
         .insert({
           name: item.name,
@@ -97,42 +107,9 @@ export const useMenu = () => {
         .select()
         .single();
 
-      if (itemError) throw itemError;
-
-      // Insert variations if any
-      if (item.variations && item.variations.length > 0) {
-        const { error: variationsError } = await supabase
-          .from('variations')
-          .insert(
-            item.variations.map(v => ({
-              menu_item_id: menuItem.id,
-              name: v.name,
-              price: v.price,
-              image: v.image || null
-            }))
-          );
-
-        if (variationsError) throw variationsError;
-      }
-
-      // Insert add-ons if any
-      if (item.addOns && item.addOns.length > 0) {
-        const { error: addOnsError } = await supabase
-          .from('add_ons')
-          .insert(
-            item.addOns.map(a => ({
-              menu_item_id: menuItem.id,
-              name: a.name,
-              price: a.price,
-              category: a.category
-            }))
-          );
-
-        if (addOnsError) throw addOnsError;
-      }
-
+      if (insertError) throw insertError;
       await fetchMenuItems();
-      return menuItem;
+      return data;
     } catch (err) {
       console.error('Error adding menu item:', err);
       throw err;
@@ -141,8 +118,7 @@ export const useMenu = () => {
 
   const updateMenuItem = async (id: string, updates: Partial<MenuItem>) => {
     try {
-      // Update menu item
-      const { error: itemError } = await supabase
+      const { error: updateError } = await supabase
         .from('menu_items')
         .update({
           name: updates.name,
@@ -151,52 +127,15 @@ export const useMenu = () => {
           category: updates.category,
           popular: updates.popular,
           available: updates.available,
-          image_url: updates.image || null,
-          discount_price: updates.discountPrice || null,
-          discount_start_date: updates.discountStartDate || null,
-          discount_end_date: updates.discountEndDate || null,
+          image_url: updates.image,
+          discount_price: updates.discountPrice,
+          discount_start_date: updates.discountStartDate,
+          discount_end_date: updates.discountEndDate,
           discount_active: updates.discountActive
         })
         .eq('id', id);
 
-      if (itemError) throw itemError;
-
-      // Delete existing variations and add-ons
-      await supabase.from('variations').delete().eq('menu_item_id', id);
-      await supabase.from('add_ons').delete().eq('menu_item_id', id);
-
-      // Insert new variations
-      if (updates.variations && updates.variations.length > 0) {
-        const { error: variationsError } = await supabase
-          .from('variations')
-          .insert(
-            updates.variations.map(v => ({
-              menu_item_id: id,
-              name: v.name,
-              price: v.price,
-              image: v.image || null
-            }))
-          );
-
-        if (variationsError) throw variationsError;
-      }
-
-      // Insert new add-ons
-      if (updates.addOns && updates.addOns.length > 0) {
-        const { error: addOnsError } = await supabase
-          .from('add_ons')
-          .insert(
-            updates.addOns.map(a => ({
-              menu_item_id: id,
-              name: a.name,
-              price: a.price,
-              category: a.category
-            }))
-          );
-
-        if (addOnsError) throw addOnsError;
-      }
-
+      if (updateError) throw updateError;
       await fetchMenuItems();
     } catch (err) {
       console.error('Error updating menu item:', err);
@@ -206,16 +145,30 @@ export const useMenu = () => {
 
   const deleteMenuItem = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from('menu_items')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
-
+      if (deleteError) throw deleteError;
       await fetchMenuItems();
     } catch (err) {
       console.error('Error deleting menu item:', err);
+      throw err;
+    }
+  };
+
+  const toggleAvailability = async (id: string, available: boolean) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('menu_items')
+        .update({ available })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+      await fetchMenuItems();
+    } catch (err) {
+      console.error('Error updating availability:', err);
       throw err;
     }
   };
@@ -231,6 +184,7 @@ export const useMenu = () => {
     addMenuItem,
     updateMenuItem,
     deleteMenuItem,
+    toggleAvailability,
     refetch: fetchMenuItems
   };
 };

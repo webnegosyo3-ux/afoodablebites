@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { Category } from '../types';
+import { DEFAULT_CATEGORIES } from '../data/defaultMenu';
 
-export interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  sort_order: number;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export { type Category } from '../types';
 
 export const useCategories = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCategories = async () => {
+    if (!isSupabaseConfigured) {
+      setCategories(DEFAULT_CATEGORIES);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -28,16 +28,22 @@ export const useCategories = () => {
 
       if (fetchError) throw fetchError;
 
-      // Remove duplicates by id (in case database has duplicates)
-      const uniqueCategories = (data || []).filter((category, index, self) =>
+      if (!data || data.length === 0) {
+        setCategories(DEFAULT_CATEGORIES);
+        return;
+      }
+
+      // Remove duplicates by id
+      const uniqueCategories = data.filter((category, index, self) =>
         index === self.findIndex((c) => c.id === category.id)
       );
 
       setCategories(uniqueCategories);
       setError(null);
     } catch (err) {
-      console.error('Error fetching categories:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch categories');
+      console.warn('Error fetching categories from Supabase, using defaults:', err);
+      setCategories(DEFAULT_CATEGORIES);
+      setError(err instanceof Error ? err.message : 'Using default categories');
     } finally {
       setLoading(false);
     }
@@ -90,7 +96,6 @@ export const useCategories = () => {
 
   const deleteCategory = async (id: string) => {
     try {
-      // Check if category has menu items
       const { data: menuItems, error: checkError } = await supabase
         .from('menu_items')
         .select('id')

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Minus, X, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, X, ShoppingCart, Sparkles } from 'lucide-react';
 import { MenuItem, Variation, AddOn } from '../types';
 
 interface MenuItemCardProps {
@@ -9,11 +9,11 @@ interface MenuItemCardProps {
   onUpdateQuantity: (id: string, quantity: number) => void;
 }
 
-const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ 
-  item, 
-  onAddToCart, 
-  quantity, 
-  onUpdateQuantity 
+const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
+  item,
+  onAddToCart,
+  quantity,
+  onUpdateQuantity
 }) => {
   const [showCustomization, setShowCustomization] = useState(false);
   const [selectedVariation, setSelectedVariation] = useState<Variation | undefined>(
@@ -21,49 +21,43 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
   );
   const [selectedVariations, setSelectedVariations] = useState<Variation[]>([]);
   const [selectedAddOns, setSelectedAddOns] = useState<(AddOn & { quantity: number })[]>([]);
-  
-  // Detect how many flavors can be picked from description
+
   const detectMaxFlavors = (description: string): number => {
     const lowerDesc = description.toLowerCase();
-    // Match patterns like "pick 2 flavors", "choose 2 flavors", "2 flavors"
     const match = lowerDesc.match(/(?:pick|choose|select)?\s*(\d+)\s*flavors?/);
     if (match) {
       return parseInt(match[1]);
     }
-    return 1; // Default to 1 flavor
+    return 1;
   };
-  
+
   const maxFlavors = item.maxFlavors || detectMaxFlavors(item.description);
 
   const calculatePrice = () => {
-    // Use effective price (discounted or regular) as base
     let price = item.effectivePrice || item.basePrice;
-    
-    // For multiple flavors, use the highest priced variation
+
     if (maxFlavors > 1 && selectedVariations.length > 0) {
       const maxVariationPrice = Math.max(...selectedVariations.map(v => v.price));
       price = (item.effectivePrice || item.basePrice) + maxVariationPrice;
     } else if (selectedVariation) {
       price = (item.effectivePrice || item.basePrice) + selectedVariation.price;
     }
-    
+
     selectedAddOns.forEach(addOn => {
       price += addOn.price * addOn.quantity;
     });
     return price;
   };
-  
+
   const toggleVariationSelection = (variation: Variation) => {
     setSelectedVariations(prev => {
       const isSelected = prev.find(v => v.id === variation.id);
       if (isSelected) {
-        // Remove if already selected
         return prev.filter(v => v.id !== variation.id);
       } else if (prev.length < maxFlavors) {
-        // Add if under limit
         return [...prev, variation];
       }
-      return prev; // At limit, don't add
+      return prev;
     });
   };
 
@@ -76,18 +70,16 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
   };
 
   const handleCustomizedAddToCart = () => {
-    // Convert selectedAddOns back to regular AddOn array for cart
-    const addOnsForCart: AddOn[] = selectedAddOns.flatMap(addOn => 
+    const addOnsForCart: AddOn[] = selectedAddOns.flatMap(addOn =>
       Array(addOn.quantity).fill({ ...addOn, quantity: undefined })
     );
-    
-    // Pass multiple flavors if selected, otherwise single flavor
+
     if (maxFlavors > 1 && selectedVariations.length > 0) {
       onAddToCart(item, 1, selectedVariations[0], addOnsForCart, selectedVariations);
     } else {
       onAddToCart(item, 1, selectedVariation, addOnsForCart);
     }
-    
+
     setShowCustomization(false);
     setSelectedAddOns([]);
     setSelectedVariations([]);
@@ -103,29 +95,26 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
     }
   };
 
-  const updateAddOnQuantity = (addOn: AddOn, quantity: number) => {
+  const updateAddOnQuantity = (addOn: AddOn, qty: number) => {
     setSelectedAddOns(prev => {
       const existingIndex = prev.findIndex(a => a.id === addOn.id);
-      
-      if (quantity === 0) {
-        // Remove add-on if quantity is 0
+
+      if (qty === 0) {
         return prev.filter(a => a.id !== addOn.id);
       }
-      
+
       if (existingIndex >= 0) {
-        // Update existing add-on quantity
         const updated = [...prev];
-        updated[existingIndex] = { ...updated[existingIndex], quantity };
+        updated[existingIndex] = { ...updated[existingIndex], quantity: qty };
         return updated;
       } else {
-        // Add new add-on with quantity
-        return [...prev, { ...addOn, quantity }];
+        return [...prev, { ...addOn, quantity: qty }];
       }
     });
   };
 
   const groupedAddOns = item.addOns?.reduce((groups, addOn) => {
-    const category = addOn.category;
+    const category = addOn.category || 'Add-ons';
     if (!groups[category]) {
       groups[category] = [];
     }
@@ -135,335 +124,251 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
 
   return (
     <>
-      <div className={`bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group animate-scale-in border border-gray-100 ${!item.available ? 'opacity-60' : ''}`}>
-        {/* Image Container with Badges */}
-        <div className="relative h-48 bg-gradient-to-br from-chick-cream to-chick-beige">
-          {item.image ? (
-            <img
-              src={item.image}
-              alt={item.name}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-              decoding="async"
-              fetchPriority={item.popular ? "high" : "auto"}
-              onError={(e) => {
-                // Try fallback to logo
-                if (e.currentTarget.src !== '/images/chick-central-logo.jpg') {
-                  e.currentTarget.src = '/images/chick-central-logo.jpg';
-                } else {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                }
-              }}
-            />
-          ) : null}
-          <div className={`absolute inset-0 flex items-center justify-center ${item.image ? 'hidden' : ''}`}>
-            <div className="text-6xl opacity-20 text-chick-orange">🍗</div>
-          </div>
-          
-          {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-2">
-            {item.isOnDiscount && item.discountPrice && (
-              <div className="bg-gradient-to-r from-chick-red to-chick-orange text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse">
-                🔥 SALE
+      <div className={`bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group border border-zinc-200 flex flex-col justify-between ${!item.available ? 'opacity-60' : ''}`}>
+        <div>
+          {/* Image Container with Badges */}
+          <div className="relative h-48 sm:h-52 bg-zinc-100 overflow-hidden">
+            {item.image ? (
+              <img
+                src={item.image}
+                alt={item.name}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+                decoding="async"
+                onError={(e) => {
+                  e.currentTarget.src = '/images/afodable-bites-logo.jpg';
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-amber-50">
+                <span className="text-5xl">🍲</span>
               </div>
             )}
-            {item.popular && (
-              <div className="bg-chick-gradient text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                ⭐ POPULAR
+
+            {/* Badges */}
+            <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+              {item.isOnDiscount && item.discountPrice && (
+                <div className="bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full shadow-md animate-pulse">
+                  🔥 SALE
+                </div>
+              )}
+              {item.popular && (
+                <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-md flex items-center space-x-1">
+                  <Sparkles className="w-3 h-3" />
+                  <span>BEST SELLER</span>
+                </div>
+              )}
+            </div>
+
+            {!item.available && (
+              <div className="absolute top-3 right-3 bg-zinc-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
+                UNAVAILABLE
               </div>
             )}
           </div>
-          
-          {!item.available && (
-            <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-              UNAVAILABLE
-            </div>
-          )}
-          
-          {/* Discount Percentage Badge */}
-          {item.isOnDiscount && item.discountPrice && (
-            <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm text-chick-orange text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border-2 border-chick-orange">
-              {Math.round(((item.basePrice - item.discountPrice) / item.basePrice) * 100)}% OFF
-            </div>
-          )}
+
+          {/* Details Content */}
+          <div className="p-4 sm:p-5">
+            <h3 className="font-black text-lg sm:text-xl text-zinc-900 mb-1.5 leading-snug group-hover:text-amber-600 transition-colors">
+              {item.name}
+            </h3>
+
+            <p className="text-xs sm:text-sm text-zinc-600 line-clamp-2 mb-3">
+              {item.description}
+            </p>
+
+            {/* Add-ons indicator */}
+            {item.addOns && item.addOns.length > 0 && (
+              <div className="inline-flex items-center space-x-1 text-xs text-amber-800 bg-amber-50 font-semibold px-2.5 py-1 rounded-lg border border-amber-200 mb-2">
+                <span>✨</span>
+                <span>Includes Rice, Egg & Soup Add-ons</span>
+              </div>
+            )}
+          </div>
         </div>
-        
-        {/* Content */}
-        <div className="p-5">
-          <div className="flex items-start justify-between mb-3">
-            <h4 className="text-lg font-semibold text-gray-900 leading-tight flex-1 pr-2">{item.name}</h4>
-            {item.variations && item.variations.length > 0 && (
-              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full whitespace-nowrap">
-                {item.variations.length} flavors
-              </div>
-            )}
-          </div>
-          
-          <p className={`text-sm mb-4 leading-relaxed ${!item.available ? 'text-gray-400' : 'text-gray-600'}`}>
-            {!item.available ? 'Currently Unavailable' : item.description}
-          </p>
-          
-          {/* Pricing Section */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex-1">
-              {item.isOnDiscount && item.discountPrice ? (
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-2xl font-bold text-chick-orange">
-                      ₱{item.discountPrice.toFixed(2)}
-                    </span>
-                    <span className="text-sm text-gray-500 line-through">
-                      ₱{item.basePrice.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="text-xs text-chick-red font-semibold">
-                    Save ₱{(item.basePrice - item.discountPrice).toFixed(2)}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-2xl font-bold text-chick-dark">
-                  ₱{item.basePrice.toFixed(2)}
-                </div>
-              )}
-              
-              {item.variations && item.variations.length > 0 && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Starting price
-                </div>
-              )}
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex-shrink-0">
-              {!item.available ? (
-                <button
-                  disabled
-                  className="bg-gray-200 text-gray-500 px-4 py-2.5 rounded-xl cursor-not-allowed font-medium text-sm"
-                >
-                  Unavailable
-                </button>
-              ) : quantity === 0 ? (
-                <button
-                  onClick={handleAddToCart}
-                  className="bg-chick-gradient text-white px-6 py-2.5 rounded-xl hover:shadow-xl transition-all duration-200 transform hover:scale-105 font-bold text-sm shadow-lg"
-                >
-                  {item.variations?.length || item.addOns?.length ? '✨ Customize' : '🛒 Add'}
-                </button>
-              ) : (
-                <div className="flex items-center space-x-2 bg-gradient-to-r from-chick-yellow/20 to-chick-golden/20 rounded-xl p-1 border-2 border-chick-golden">
-                  <button
-                    onClick={handleDecrement}
-                    className="p-2 hover:bg-chick-yellow/30 rounded-lg transition-colors duration-200 hover:scale-110"
-                  >
-                    <Minus className="h-4 w-4 text-chick-dark" />
-                  </button>
-                  <span className="font-bold text-chick-dark min-w-[28px] text-center text-sm">{quantity}</span>
-                  <button
-                    onClick={handleIncrement}
-                    className="p-2 hover:bg-chick-yellow/30 rounded-lg transition-colors duration-200 hover:scale-110"
-                  >
-                    <Plus className="h-4 w-4 text-chick-dark" />
-                  </button>
-                </div>
+
+        {/* Pricing and Action Footer */}
+        <div className="p-4 sm:p-5 pt-0 border-t border-zinc-100 flex items-center justify-between mt-auto">
+          <div>
+            <span className="text-xs text-zinc-500 block">Price</span>
+            <div className="flex items-baseline space-x-1.5">
+              <span className="text-xl sm:text-2xl font-black text-amber-600">
+                ₱{item.effectivePrice || item.basePrice}
+              </span>
+              {item.isOnDiscount && item.discountPrice && (
+                <span className="text-xs text-zinc-400 line-through">
+                  ₱{item.basePrice}
+                </span>
               )}
             </div>
           </div>
 
-          {/* Add-ons indicator */}
-          {item.addOns && item.addOns.length > 0 && (
-            <div className="flex items-center space-x-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-lg">
-              <span>+</span>
-              <span>{item.addOns.length} add-on{item.addOns.length > 1 ? 's' : ''} available</span>
-            </div>
-          )}
+          {/* Action Buttons */}
+          <div>
+            {!item.available ? (
+              <button
+                disabled
+                className="bg-zinc-200 text-zinc-500 px-4 py-2 rounded-xl cursor-not-allowed font-bold text-xs"
+              >
+                Sold Out
+              </button>
+            ) : quantity === 0 ? (
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className="px-4 sm:px-5 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95 font-black text-xs sm:text-sm shadow flex items-center space-x-1.5"
+              >
+                <span>{item.variations?.length || item.addOns?.length ? '✨ Customize' : '🛒 Add to Cart'}</span>
+              </button>
+            ) : (
+              <div className="flex items-center space-x-1.5 bg-amber-50 rounded-xl p-1 border-2 border-amber-400">
+                <button
+                  type="button"
+                  onClick={handleDecrement}
+                  className="p-1.5 hover:bg-amber-200 rounded-lg transition-colors active:scale-90"
+                >
+                  <Minus className="h-4 w-4 text-amber-900" />
+                </button>
+                <span className="font-black text-amber-950 min-w-[24px] text-center text-sm">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={handleIncrement}
+                  className="p-1.5 hover:bg-amber-200 rounded-lg transition-colors active:scale-90"
+                >
+                  <Plus className="h-4 w-4 text-amber-900" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Customization Modal */}
       {showCustomization && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between rounded-t-2xl">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-zinc-200">
+            <div className="sticky top-0 bg-white border-b border-zinc-200 p-5 sm:p-6 flex items-center justify-between rounded-t-3xl z-10">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">Customize {item.name}</h3>
-                <p className="text-sm text-gray-500 mt-1">Choose your flavor and add-ons</p>
+                <h3 className="text-xl font-black text-zinc-900">Customize {item.name}</h3>
+                <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">Select your extra add-ons and toppings</p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowCustomization(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                className="p-2 hover:bg-zinc-100 rounded-full transition-colors"
               >
-                <X className="h-5 w-5 text-gray-500" />
+                <X className="h-5 w-5 text-zinc-500" />
               </button>
             </div>
 
-            <div className="p-6">
-              {/* Flavor Variations */}
+            <div className="p-5 sm:p-6 space-y-6">
+              {/* Optional Variations if any */}
               {item.variations && item.variations.length > 0 && (
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-gray-900">
-                      {maxFlavors > 1 ? `Pick ${maxFlavors} Flavors` : 'Choose Flavor'}
-                    </h4>
-                    {maxFlavors > 1 && (
-                      <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                        {selectedVariations.length}/{maxFlavors} selected
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <h4 className="font-bold text-zinc-900 mb-3 text-sm">Select Variation</h4>
+                  <div className="grid grid-cols-2 gap-2.5">
                     {item.variations.map((variation) => {
-                      const isSelected = maxFlavors > 1 
-                        ? selectedVariations.find(v => v.id === variation.id)
-                        : selectedVariation?.id === variation.id;
-                      
+                      const isSelected = selectedVariation?.id === variation.id;
                       return (
                         <label
                           key={variation.id}
-                          className={`flex items-center space-x-3 p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                            isSelected
-                              ? 'border-chick-orange bg-chick-beige shadow-md'
-                              : 'border-gray-200 hover:border-chick-golden hover:bg-chick-cream'
-                          }`}
+                          className={`flex items-center space-x-2 p-3 border-2 rounded-xl cursor-pointer transition-all ${isSelected
+                            ? 'border-amber-500 bg-amber-50 shadow-sm'
+                            : 'border-zinc-200 hover:border-amber-300'
+                            }`}
                         >
                           <input
-                            type={maxFlavors > 1 ? "checkbox" : "radio"}
-                            name={maxFlavors > 1 ? undefined : "variation"}
-                            checked={!!isSelected}
-                            onChange={() => {
-                              if (maxFlavors > 1) {
-                                toggleVariationSelection(variation);
-                              } else {
-                                setSelectedVariation(variation);
-                              }
-                            }}
-                            className="w-4 h-4 text-chick-orange focus:ring-chick-golden flex-shrink-0 rounded"
+                            type="radio"
+                            name="variation"
+                            checked={isSelected}
+                            onChange={() => setSelectedVariation(variation)}
+                            className="w-4 h-4 text-amber-600 focus:ring-amber-500"
                           />
-                          <div className="flex-1 flex items-center justify-between">
-                            <span className="font-medium text-gray-900 text-sm">
-                              {variation.name}
-                            </span>
-                            {variation.price > 0 && (
-                              <span className="text-chick-orange font-semibold ml-2 text-sm">
-                                +₱{variation.price.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-xs sm:text-sm font-semibold text-zinc-800">{variation.name}</span>
                         </label>
                       );
                     })}
                   </div>
-                  
-                  {maxFlavors > 1 && selectedVariations.length > 0 && (
-                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-800 font-medium">
-                        ✨ Selected: {selectedVariations.map(v => v.name).join(', ')}
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* Add-ons */}
+              {/* Add-ons List (Plain Rice, Fried Rice, Egg, Mushroom Soup) */}
               {groupedAddOns && Object.keys(groupedAddOns).length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-semibold text-gray-900 mb-4">Add-ons</h4>
+                <div>
+                  <h4 className="font-bold text-zinc-900 mb-3 text-sm">
+                    🍚 Complete Your Meal with Add-ons:
+                  </h4>
                   {Object.entries(groupedAddOns).map(([category, addOns]) => (
-                    <div key={category} className="mb-4">
-                      <h5 className="text-sm font-medium text-gray-700 mb-3 capitalize">
-                        {category.replace('-', ' ')}
-                      </h5>
-                      <div className="space-y-3">
-                        {addOns.map((addOn) => (
+                    <div key={category} className="space-y-2.5">
+                      {addOns.map((addOn) => {
+                        const current = selectedAddOns.find(a => a.id === addOn.id);
+                        return (
                           <div
                             key={addOn.id}
-                            className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-gray-50 transition-all duration-200"
+                            className="flex items-center justify-between p-3.5 border border-zinc-200 rounded-xl hover:border-amber-300 hover:bg-amber-50/40 transition-all"
                           >
-                            <div className="flex-1">
-                              <span className="font-medium text-gray-900">{addOn.name}</span>
-                              <div className="text-sm text-gray-600">
-                                {addOn.price > 0 ? `₱${addOn.price.toFixed(2)} each` : 'Free'}
-                              </div>
+                            <div>
+                              <span className="font-bold text-zinc-800 text-sm block">{addOn.name}</span>
+                              <span className="text-xs font-semibold text-amber-600">
+                                +₱{addOn.price.toFixed(2)}
+                              </span>
                             </div>
-                            
-                            <div className="flex items-center space-x-2">
-                              {selectedAddOns.find(a => a.id === addOn.id) ? (
-                                <div className="flex items-center space-x-2 bg-chick-beige rounded-xl p-1 border-2 border-chick-golden">
+
+                            <div>
+                              {current ? (
+                                <div className="flex items-center space-x-2 bg-amber-50 rounded-xl p-1 border-2 border-amber-400">
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      const current = selectedAddOns.find(a => a.id === addOn.id);
-                                      updateAddOnQuantity(addOn, (current?.quantity || 1) - 1);
-                                    }}
-                                    className="p-1.5 hover:bg-chick-golden rounded-lg transition-colors duration-200"
+                                    onClick={() => updateAddOnQuantity(addOn, current.quantity - 1)}
+                                    className="p-1 hover:bg-amber-200 rounded-lg text-amber-900"
                                   >
-                                    <Minus className="h-3 w-3 text-chick-dark" />
+                                    <Minus className="h-3.5 w-3.5" />
                                   </button>
-                                  <span className="font-semibold text-chick-dark min-w-[24px] text-center text-sm">
-                                    {selectedAddOns.find(a => a.id === addOn.id)?.quantity || 0}
+                                  <span className="font-black text-amber-950 min-w-[20px] text-center text-xs">
+                                    {current.quantity}
                                   </span>
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      const current = selectedAddOns.find(a => a.id === addOn.id);
-                                      updateAddOnQuantity(addOn, (current?.quantity || 0) + 1);
-                                    }}
-                                    className="p-1.5 hover:bg-chick-golden rounded-lg transition-colors duration-200"
+                                    onClick={() => updateAddOnQuantity(addOn, current.quantity + 1)}
+                                    className="p-1 hover:bg-amber-200 rounded-lg text-amber-900"
                                   >
-                                    <Plus className="h-3 w-3 text-chick-dark" />
+                                    <Plus className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
                               ) : (
                                 <button
                                   type="button"
                                   onClick={() => updateAddOnQuantity(addOn, 1)}
-                                  className="flex items-center space-x-1 px-4 py-2 bg-chick-gradient text-white rounded-xl hover:shadow-lg transition-all duration-200 text-sm font-bold shadow-md"
+                                  className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
                                 >
-                                  <Plus className="h-3 w-3" />
-                                  <span>Add</span>
+                                  + Add
                                 </button>
                               )}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Price Summary */}
-              <div className="border-t-2 border-chick-golden pt-4 mb-6 bg-chick-cream/50 -mx-6 px-6 py-4">
-                <div className="flex items-center justify-between text-2xl font-bold">
-                  <span className="text-chick-dark">Total:</span>
-                  <span className="text-chick-orange">₱{calculatePrice().toFixed(2)}</span>
+              {/* Price Calculation Summary */}
+              <div className="border-t-2 border-amber-400 pt-4 bg-amber-50/70 -mx-5 sm:-mx-6 px-5 sm:px-6 py-3.5 rounded-b-2xl">
+                <div className="flex items-center justify-between text-xl sm:text-2xl font-black mb-4">
+                  <span className="text-zinc-800">Total Price:</span>
+                  <span className="text-amber-600">₱{calculatePrice().toFixed(2)}</span>
                 </div>
-              </div>
 
-              <button
-                onClick={handleCustomizedAddToCart}
-                disabled={maxFlavors > 1 && selectedVariations.length !== maxFlavors}
-                className={`w-full py-4 rounded-xl transition-all duration-200 font-bold flex items-center justify-center space-x-2 shadow-lg ${
-                  maxFlavors > 1 && selectedVariations.length !== maxFlavors
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-chick-gradient text-white hover:shadow-2xl transform hover:scale-105'
-                }`}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span>
-                  {maxFlavors > 1 && selectedVariations.length !== maxFlavors
-                    ? `Please select ${maxFlavors} flavors`
-                    : `Add to Cart - ₱${calculatePrice().toFixed(2)}`
-                  }
-                </span>
-              </button>
-              
-              {maxFlavors > 1 && selectedVariations.length !== maxFlavors && (
-                <p className="text-center text-sm text-gray-600 mt-2">
-                  You've selected {selectedVariations.length} of {maxFlavors} required flavors
-                </p>
-              )}
+                <button
+                  type="button"
+                  onClick={handleCustomizedAddToCart}
+                  className="w-full py-4 rounded-xl font-black text-base transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white hover:from-amber-400 hover:to-orange-400 active:scale-95"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  <span>Add to Cart - ₱{calculatePrice().toFixed(2)}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

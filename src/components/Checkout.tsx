@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock, Bike } from 'lucide-react';
+import { ArrowLeft, Clock } from 'lucide-react';
 import { CartItem, ServiceType } from '../types';
-import { LALAMOVE_SERVICE_TYPES } from '../config/lalamove';
-import { lalamoveService } from '../services/lalamove';
 
 interface CheckoutProps {
   cartItems: CartItem[];
@@ -17,373 +15,228 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [serviceType, setServiceType] = useState<ServiceType>('dine-in');
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [pickupTime, setPickupTime] = useState('5-10');
+  const [pickupTime, setPickupTime] = useState('10-15');
   const [customTime, setCustomTime] = useState('');
-  // Dine-in specific state
-  const [partySize, setPartySize] = useState(1);
   const [notes, setNotes] = useState('');
-  // Lalamove delivery state
-  const [deliveryMethod, setDeliveryMethod] = useState<'standard' | 'lalamove'>('standard');
-  const [lalamoveServiceType, setLalamoveServiceType] = useState('MOTORCYCLE');
-  const [lalamoveQuote, setLalamoveQuote] = useState<any>(null);
-  const [loadingQuote, setLoadingQuote] = useState(false);
-  const [lalamoveOrder, setLalamoveOrder] = useState<any>(null);
-  const [creatingOrder, setCreatingOrder] = useState(false);
 
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
 
-  // Get Lalamove quotation when address changes
-  React.useEffect(() => {
-    const getLalamoveQuotation = async () => {
-      if (serviceType === 'delivery' && deliveryMethod === 'lalamove' && address) {
-        setLoadingQuote(true);
-        try {
-          const quote = await lalamoveService.getQuotation({
-            serviceType: lalamoveServiceType,
-            stops: [
-              {
-                coordinates: { lat: '14.5547', lng: '121.0244' }, // Restaurant location
-                address: 'Chick Central, Taguig, Manila',
-              },
-              {
-                coordinates: { lat: '14.5500', lng: '121.0300' }, // Approximate customer location
-                address: address,
-              },
-            ],
-          });
-          setLalamoveQuote(quote);
-        } catch (error) {
-          console.error('Error getting Lalamove quote:', error);
-        } finally {
-          setLoadingQuote(false);
-        }
-      }
-    };
-
-    const timeoutId = setTimeout(getLalamoveQuotation, 500); // Debounce
-    return () => clearTimeout(timeoutId);
-  }, [address, deliveryMethod, lalamoveServiceType, serviceType]);
-
-  const handleProceedToPayment = async () => {
-    // If Lalamove delivery, create the order first
-    if (serviceType === 'delivery' && deliveryMethod === 'lalamove') {
-      setCreatingOrder(true);
-      try {
-        const order = await lalamoveService.placeOrder({
-          serviceType: lalamoveServiceType,
-          stops: [
-            {
-              coordinates: { lat: '14.5547', lng: '121.0244' }, // Restaurant location
-              address: 'Chick Central, Taguig, Manila',
-            },
-            {
-              coordinates: { lat: '14.5500', lng: '121.0300' }, // Customer location (approximate)
-              address: address,
-            },
-          ],
-          sender: {
-            name: 'Chick Central',
-            phone: '+639052931408',
-          },
-          recipients: [
-            {
-              name: customerName,
-              phone: contactNumber,
-              remarks: landmark || notes || 'Please call upon arrival',
-            },
-          ],
-          deliveries: [
-            {
-              remarks: `Order Total: ₱${totalPrice}`,
-            },
-          ],
-        });
-
-        if (order) {
-          setLalamoveOrder(order);
-          
-          // Check if sandbox mode (test credentials)
-          const isSandbox = import.meta.env.VITE_LALAMOVE_USE_SANDBOX === 'true';
-          
-          if (order.trackingUrl && !isSandbox) {
-            // Production: Open real tracking URL
-            window.open(order.trackingUrl, '_blank');
-          } else if (isSandbox) {
-            // Sandbox: Show info message
-            console.log('📦 Sandbox Mode: Order created successfully!');
-            console.log('Order ID:', order.orderId);
-            console.log('Note: Tracking links work only in production mode');
-          }
-        }
-      } catch (error) {
-        console.error('Error creating Lalamove order:', error);
-        alert('Failed to create Lalamove delivery order. Please try again.');
-      } finally {
-        setCreatingOrder(false);
-      }
-    }
-    
+  const handleProceedToPayment = () => {
     setStep('payment');
   };
 
   const handlePlaceOrder = () => {
-    // If Lalamove delivery, open tracking link directly
-    if (serviceType === 'delivery' && deliveryMethod === 'lalamove' && lalamoveOrder?.trackingUrl) {
-      const isSandbox = import.meta.env.VITE_LALAMOVE_USE_SANDBOX === 'true';
-      
-      if (isSandbox) {
-        // Sandbox mode: Show alert and send via Messenger
-        alert(`✅ Lalamove Order Created!\n\nOrder ID: ${lalamoveOrder.orderId}\n\nNote: You're in TEST mode. Tracking links work only with production credentials.\n\nProceeding to send order details via Messenger...`);
-        // Continue to Messenger flow below
-      } else {
-        // Production: Open Lalamove tracking in the current tab
-        window.location.href = lalamoveOrder.trackingUrl;
-        return;
-      }
-    }
-
-    // For non-Lalamove orders, proceed with Messenger
-    const timeInfo = serviceType === 'pickup' 
+    const timeInfo = serviceType === 'pickup'
       ? (pickupTime === 'custom' ? customTime : `${pickupTime} minutes`)
       : '';
-    
-    const dineInInfo = serviceType === 'dine-in' 
-      ? `👥 Party Size: ${partySize} person${partySize !== 1 ? 's' : ''}`
-      : '';
-    
-    const deliveryInfo = serviceType === 'delivery' && deliveryMethod === 'lalamove'
-      ? `\nDelivery Method: Lalamove (${LALAMOVE_SERVICE_TYPES[lalamoveServiceType as keyof typeof LALAMOVE_SERVICE_TYPES]?.name})\nEstimated Delivery Fee: ₱${lalamoveQuote?.priceBreakdown.total || 'TBD'}\nETA: ${lalamoveQuote?.deliveryTime || 'TBD'}${lalamoveOrder ? `\nLalamove Order ID: ${lalamoveOrder.orderId}\nTracking: ${lalamoveOrder.trackingUrl}` : ''}`
-      : serviceType === 'delivery'
-      ? `\nDelivery Method: Standard`
-      : '';
-    
+
+    const serviceName = serviceType === 'dine-in'
+      ? 'Dine In'
+      : serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
+
     const orderDetails = `
-CHICK CENTRAL ORDER
+AFOODABLE BITES ORDER 🍲
 
 Customer: ${customerName}
 Contact: ${contactNumber}
-Service: ${serviceType.charAt(0).toUpperCase() + serviceType.slice(1)}
-${serviceType === 'delivery' ? `Address: ${address}${landmark ? `\nLandmark: ${landmark}` : ''}${deliveryInfo}` : ''}
-${serviceType === 'pickup' ? `Pickup Time: ${timeInfo}` : ''}
-${serviceType === 'dine-in' ? `Party Size: ${partySize} person${partySize !== 1 ? 's' : ''}` : ''}
+Service Type: ${serviceName}
+${serviceType === 'delivery' ? `Address: ${address}${landmark ? `\nLandmark: ${landmark}` : ''}` : ''}
+${serviceType === 'pickup' ? `Estimated Pickup Time: ${timeInfo}` : ''}
 
 ORDER DETAILS:
 ${cartItems.map(item => {
-  let itemDetails = `- ${item.name}`;
-  if (item.selectedVariations && item.selectedVariations.length > 0) {
-    itemDetails += ` (${item.selectedVariations.map(v => v.name).join(' + ')})`;
-  } else if (item.selectedVariation) {
-    itemDetails += ` (${item.selectedVariation.name})`;
-  }
-  if (item.selectedAddOns && item.selectedAddOns.length > 0) {
-    itemDetails += ` + ${item.selectedAddOns.map(addOn => 
-      addOn.quantity && addOn.quantity > 1 
-        ? `${addOn.name} x${addOn.quantity}`
-        : addOn.name
-    ).join(', ')}`;
-  }
-  itemDetails += ` x${item.quantity} - P${item.totalPrice * item.quantity}`;
-  return itemDetails;
-}).join('\n')}
+      let itemDetails = `- ${item.name}`;
+      if (item.selectedVariations && item.selectedVariations.length > 0) {
+        itemDetails += ` (${item.selectedVariations.map(v => v.name).join(' + ')})`;
+      } else if (item.selectedVariation) {
+        itemDetails += ` (${item.selectedVariation.name})`;
+      }
+      if (item.selectedAddOns && item.selectedAddOns.length > 0) {
+        itemDetails += ` + ${item.selectedAddOns.map(addOn =>
+          addOn.quantity && addOn.quantity > 1
+            ? `${addOn.name} x${addOn.quantity}`
+            : addOn.name
+        ).join(', ')}`;
+      }
+      itemDetails += ` x${item.quantity} - ₱${item.totalPrice * item.quantity}`;
+      return itemDetails;
+    }).join('\n')}
 
-TOTAL: P${totalPrice}
+TOTAL: ₱${totalPrice}
 
-Payment: GCash
+Payment: GCash / InstaPay
 Payment Screenshot: Please attach your payment receipt screenshot
 
-${notes ? `Notes: ${notes}` : ''}
+${notes ? `Special Notes: ${notes}` : ''}
 
-Please confirm this order to proceed. Thank you for choosing Chick Central!
+Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
     `.trim();
 
     const encodedMessage = encodeURIComponent(orderDetails);
     const messengerUrl = `https://m.me/822055400987696?text=${encodedMessage}`;
-    
-    // Detect if mobile device for better compatibility
+
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
     if (isMobile) {
-      // On mobile, use location.href for better compatibility
       window.location.href = messengerUrl;
     } else {
-      // On desktop, open in new tab
       window.open(messengerUrl, '_blank');
     }
   };
 
-  const isDetailsValid = customerName && contactNumber && 
-    (serviceType !== 'delivery' || (address && (deliveryMethod === 'standard' || !loadingQuote))) && 
-    (serviceType !== 'pickup' || (pickupTime !== 'custom' || customTime)) &&
-    (serviceType !== 'dine-in' || partySize > 0) &&
-    !creatingOrder;
+  const isDetailsValid = Boolean(
+    customerName &&
+    contactNumber &&
+    (serviceType !== 'delivery' || address) &&
+    (serviceType !== 'pickup' || (pickupTime !== 'custom' || customTime))
+  );
 
   if (step === 'details') {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center mb-8">
           <button
+            type="button"
             onClick={onBack}
-            className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors duration-200"
+            className="flex items-center space-x-2 text-zinc-600 hover:text-black transition-colors duration-200"
           >
             <ArrowLeft className="h-5 w-5" />
-            <span>Back to Cart</span>
+            <span className="font-semibold">Back to Cart</span>
           </button>
-          <h1 className="text-3xl font-noto font-semibold text-black ml-8">Order Details</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 ml-6">Order Details</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Order Summary */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-noto font-medium text-black mb-6">Order Summary</h2>
-            
-            <div className="space-y-4 mb-6">
+          <div className="bg-white rounded-2xl shadow-md p-6 border border-zinc-200">
+            <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 mb-6">Order Summary</h2>
+
+            <div className="space-y-4 mb-6 max-h-[420px] overflow-y-auto pr-2">
               {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-2 border-b border-chick-beige">
+                <div key={item.id} className="flex items-center justify-between py-2.5 border-b border-zinc-100">
                   <div>
-                    <h4 className="font-medium text-black">{item.name}</h4>
-                    {item.selectedVariations && item.selectedVariations.length > 0 ? (
-                      <p className="text-sm text-gray-600">Flavors: {item.selectedVariations.map(v => v.name).join(' + ')}</p>
-                    ) : item.selectedVariation ? (
-                      <p className="text-sm text-gray-600">Flavor: {item.selectedVariation.name}</p>
-                    ) : null}
+                    <h4 className="font-bold text-zinc-900">{item.name}</h4>
                     {item.selectedAddOns && item.selectedAddOns.length > 0 && (
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs text-zinc-500">
                         Add-ons: {item.selectedAddOns.map(addOn => addOn.name).join(', ')}
                       </p>
                     )}
-                    <p className="text-sm text-gray-600">₱{item.totalPrice} x {item.quantity}</p>
+                    <p className="text-xs text-zinc-500">₱{item.totalPrice} x {item.quantity}</p>
                   </div>
-                  <span className="font-semibold text-black">₱{item.totalPrice * item.quantity}</span>
+                  <span className="font-bold text-zinc-900">₱{item.totalPrice * item.quantity}</span>
                 </div>
               ))}
             </div>
-            
-            <div className="border-t border-chick-golden pt-4">
-              <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black">
+
+            <div className="border-t-2 border-amber-400 pt-4">
+              <div className="flex items-center justify-between text-2xl font-black text-zinc-900">
                 <span>Total:</span>
-                <span>₱{totalPrice}</span>
+                <span className="text-amber-600">₱{totalPrice}</span>
               </div>
             </div>
           </div>
 
           {/* Customer Details Form */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-noto font-medium text-black mb-6">Customer Information</h2>
-            
-            <form className="space-y-6">
-              {/* Customer Information */}
+          <div className="bg-white rounded-2xl shadow-md p-6 border border-zinc-200">
+            <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 mb-6">Customer Information</h2>
+
+            <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); if (isDetailsValid) handleProceedToPayment(); }}>
+              {/* Full Name */}
               <div>
-                <label className="block text-sm font-medium text-black mb-2">Full Name *</label>
+                <label className="block text-sm font-bold text-zinc-800 mb-1.5">Full Name *</label>
                 <input
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full px-4 py-3 border border-chick-golden rounded-lg focus:ring-2 focus:ring-chick-orange focus:border-transparent transition-all duration-200"
+                  className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                   placeholder="Enter your full name"
                   required
                 />
               </div>
 
+              {/* Contact Number */}
               <div>
-                <label className="block text-sm font-medium text-black mb-2">Contact Number *</label>
+                <label className="block text-sm font-bold text-zinc-800 mb-1.5">Contact Number *</label>
                 <input
                   type="tel"
                   value={contactNumber}
                   onChange={(e) => setContactNumber(e.target.value)}
-                  className="w-full px-4 py-3 border border-chick-golden rounded-lg focus:ring-2 focus:ring-chick-orange focus:border-transparent transition-all duration-200"
+                  className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                   placeholder="09XX XXX XXXX"
                   required
                 />
               </div>
 
-              {/* Service Type */}
+              {/* Service Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-black mb-3">Service Type *</label>
-                <div className="grid grid-cols-3 gap-3">
+                <label className="block text-sm font-bold text-zinc-800 mb-2">Service Type *</label>
+                <div className="grid grid-cols-3 gap-2.5">
                   {[
-                    { value: 'dine-in', label: 'Dine In', icon: '🪑' },
-                    { value: 'pickup', label: 'Pickup', icon: '🚶' },
+                    { value: 'dine-in', label: 'Dine In', icon: '🍽️' },
+                    { value: 'pickup', label: 'Pickup', icon: '🥡' },
                     { value: 'delivery', label: 'Delivery', icon: '🛵' }
                   ].map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setServiceType(option.value as ServiceType)}
-                      className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                        serviceType === option.value
-                          ? 'border-red-600 bg-red-600 text-white'
-                          : 'border-red-300 bg-white text-gray-700 hover:border-red-400'
-                      }`}
+                      className={`p-3.5 rounded-xl border-2 transition-all duration-200 text-center active:scale-95 ${serviceType === option.value
+                        ? 'border-amber-500 bg-amber-500 text-white shadow-md'
+                        : 'border-zinc-200 bg-white text-zinc-700 hover:border-amber-400'
+                        }`}
                     >
                       <div className="text-2xl mb-1">{option.icon}</div>
-                      <div className="text-sm font-medium">{option.label}</div>
+                      <div className="text-xs sm:text-sm font-bold">{option.label}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Dine-in Details */}
+              {/* Dine-in Notice (NO TABLE NUMBER as requested) */}
               {serviceType === 'dine-in' && (
-                <div>
-                  <label className="block text-sm font-medium text-black mb-2">Party Size *</label>
-                  <div className="flex items-center space-x-4">
-                    <button
-                      type="button"
-                      onClick={() => setPartySize(Math.max(1, partySize - 1))}
-                      className="w-10 h-10 rounded-lg border-2 border-chick-golden flex items-center justify-center text-chick-dark font-bold hover:border-chick-orange hover:bg-chick-golden transition-all duration-200"
-                    >
-                      -
-                    </button>
-                    <span className="text-2xl font-bold text-chick-dark min-w-[3rem] text-center">{partySize}</span>
-                    <button
-                      type="button"
-                      onClick={() => setPartySize(Math.min(20, partySize + 1))}
-                      className="w-10 h-10 rounded-lg border-2 border-chick-golden flex items-center justify-center text-chick-dark font-bold hover:border-chick-orange hover:bg-chick-golden transition-all duration-200"
-                    >
-                      +
-                    </button>
-                    <span className="text-sm text-gray-600 ml-2">person{partySize !== 1 ? 's' : ''}</span>
-                  </div>
+                <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-sm text-amber-900">
+                  <p className="font-bold">🍽️ Dine-In Order</p>
+                  <p className="text-xs text-amber-800 mt-1">
+                    Just complete your order and show your payment receipt at the counter when you arrive. Table seating is open and ready!
+                  </p>
                 </div>
               )}
 
               {/* Pickup Time Selection */}
               {serviceType === 'pickup' && (
                 <div>
-                  <label className="block text-sm font-medium text-black mb-3">Pickup Time *</label>
+                  <label className="block text-sm font-bold text-zinc-800 mb-2">Pickup Time *</label>
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
                       {[
-                        { value: '5-10', label: '5-10 minutes' },
-                        { value: '15-20', label: '15-20 minutes' },
-                        { value: '25-30', label: '25-30 minutes' },
+                        { value: '10-15', label: '10-15 mins' },
+                        { value: '20-25', label: '20-25 mins' },
+                        { value: '30-40', label: '30-40 mins' },
                         { value: 'custom', label: 'Custom Time' }
                       ].map((option) => (
                         <button
                           key={option.value}
                           type="button"
                           onClick={() => setPickupTime(option.value)}
-                          className={`p-3 rounded-lg border-2 transition-all duration-200 text-sm ${
-                            pickupTime === option.value
-                              ? 'border-red-600 bg-red-600 text-white'
-                              : 'border-red-300 bg-white text-gray-700 hover:border-red-400'
-                          }`}
+                          className={`p-2.5 rounded-xl border-2 transition-all duration-200 text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 ${pickupTime === option.value
+                            ? 'border-amber-500 bg-amber-500 text-white shadow-sm'
+                            : 'border-zinc-200 bg-white text-zinc-700 hover:border-amber-400'
+                            }`}
                         >
-                          <Clock className="h-4 w-4 mx-auto mb-1" />
-                          {option.label}
+                          <Clock className="h-4 w-4" />
+                          <span>{option.label}</span>
                         </button>
                       ))}
                     </div>
-                    
+
                     {pickupTime === 'custom' && (
                       <input
                         type="text"
                         value={customTime}
                         onChange={(e) => setCustomTime(e.target.value)}
-                        className="w-full px-4 py-3 border border-chick-golden rounded-lg focus:ring-2 focus:ring-chick-orange focus:border-transparent transition-all duration-200"
-                        placeholder="e.g., 45 minutes, 1 hour, 2:30 PM"
+                        className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
+                        placeholder="e.g. 45 mins, 1:30 PM"
                         required
                       />
                     )}
@@ -395,159 +248,52 @@ Please confirm this order to proceed. Thank you for choosing Chick Central!
               {serviceType === 'delivery' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-black mb-2">Delivery Address *</label>
+                    <label className="block text-sm font-bold text-zinc-800 mb-1.5">Delivery Address *</label>
                     <textarea
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      className="w-full px-4 py-3 border border-chick-golden rounded-lg focus:ring-2 focus:ring-chick-orange focus:border-transparent transition-all duration-200"
+                      className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                       placeholder="Enter your complete delivery address"
                       rows={3}
                       required
                     />
                   </div>
-                  
+
                   <div>
-                    <label className="block text-sm font-medium text-black mb-2">Landmark</label>
+                    <label className="block text-sm font-bold text-zinc-800 mb-1.5">Landmark (Optional)</label>
                     <input
                       type="text"
                       value={landmark}
                       onChange={(e) => setLandmark(e.target.value)}
-                      className="w-full px-4 py-3 border border-chick-golden rounded-lg focus:ring-2 focus:ring-chick-orange focus:border-transparent transition-all duration-200"
-                      placeholder="e.g., Near McDonald's, Beside 7-Eleven, In front of school"
+                      className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
+                      placeholder="e.g. Near 7-Eleven, Beside basketball court"
                     />
                   </div>
-
-                  {/* Delivery Method Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-black mb-3">Delivery Method *</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryMethod('standard')}
-                        className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                          deliveryMethod === 'standard'
-                            ? 'border-chick-orange bg-chick-beige'
-                            : 'border-gray-300 hover:border-chick-golden'
-                        }`}
-                      >
-                        <div className="text-2xl mb-2">🛵</div>
-                        <div className="font-semibold text-sm">Standard Delivery</div>
-                        <div className="text-xs text-gray-600 mt-1">Own delivery rider</div>
-                      </button>
-                      
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryMethod('lalamove')}
-                        className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                          deliveryMethod === 'lalamove'
-                            ? 'border-chick-orange bg-chick-beige'
-                            : 'border-gray-300 hover:border-chick-golden'
-                        }`}
-                      >
-                        <div className="flex items-center justify-center mb-2">
-                          <Bike className="h-6 w-6 text-orange-500" />
-                        </div>
-                        <div className="font-semibold text-sm">Lalamove</div>
-                        <div className="text-xs text-gray-600 mt-1">Fast & tracked</div>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Lalamove Service Type Selection */}
-                  {deliveryMethod === 'lalamove' && (
-                    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                      <label className="block text-sm font-medium text-black mb-3">
-                        <Bike className="inline h-4 w-4 mr-1" />
-                        Choose Vehicle Type
-                      </label>
-                      <div className="space-y-2">
-                        {Object.values(LALAMOVE_SERVICE_TYPES).map((service) => (
-                          <label
-                            key={service.id}
-                            className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                              lalamoveServiceType === service.id
-                                ? 'border-orange-500 bg-white'
-                                : 'border-gray-300 bg-white hover:border-orange-300'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="lalamoveService"
-                              checked={lalamoveServiceType === service.id}
-                              onChange={() => setLalamoveServiceType(service.id)}
-                              className="mr-3"
-                            />
-                            <div className="text-2xl mr-3">{service.icon}</div>
-                            <div className="flex-1">
-                              <div className="font-semibold text-sm">{service.name}</div>
-                              <div className="text-xs text-gray-600">{service.description}</div>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-
-                      {/* Lalamove Quote */}
-                      {address && (
-                        <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
-                          {loadingQuote ? (
-                            <div className="text-center text-sm text-gray-600">
-                              <div className="animate-spin inline-block w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full mr-2"></div>
-                              Calculating delivery fee...
-                            </div>
-                          ) : lalamoveQuote ? (
-                            <div className="text-sm">
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-gray-600">Estimated Delivery Fee:</span>
-                                <span className="font-bold text-orange-600 text-lg">
-                                  ₱{parseFloat(lalamoveQuote.priceBreakdown.total).toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs text-gray-500">
-                                <span>Distance: {lalamoveQuote.distance.value} km</span>
-                                <span>ETA: {lalamoveQuote.deliveryTime}</span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="text-xs text-gray-500">
-                              Enter delivery address to see quote
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </>
               )}
 
-              {/* Special Notes */}
+              {/* Special Instructions */}
               <div>
-                <label className="block text-sm font-medium text-black mb-2">Special Instructions (Optional)</label>
+                <label className="block text-sm font-bold text-zinc-800 mb-1.5">Special Instructions (Optional)</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-4 py-3 border border-chick-golden rounded-lg focus:ring-2 focus:ring-chick-orange focus:border-transparent transition-all duration-200"
-                  placeholder="Any special requests or notes..."
-                  rows={3}
+                  className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
+                  placeholder="e.g. Extra spicy, separate sauce, please call on arrival..."
+                  rows={2}
                 />
               </div>
 
               <button
+                type="button"
                 onClick={handleProceedToPayment}
                 disabled={!isDetailsValid}
-                className={`w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform ${
-                  isDetailsValid
-                    ? 'bg-chick-gradient text-white hover:shadow-2xl hover:scale-[1.02]'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-200 transform ${isDetailsValid
+                  ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white hover:shadow-xl hover:scale-[1.01] active:scale-95'
+                  : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
+                  }`}
               >
-                {creatingOrder ? (
-                  <span className="flex items-center justify-center">
-                    <div className="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    Creating Lalamove Order...
-                  </span>
-                ) : (
-                  'Proceed to Payment'
-                )}
+                Proceed to Payment
               </button>
             </form>
           </div>
@@ -558,218 +304,149 @@ Please confirm this order to proceed. Thank you for choosing Chick Central!
 
   // Payment Step
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center mb-8">
         <button
+          type="button"
           onClick={() => setStep('details')}
-          className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors duration-200"
+          className="flex items-center space-x-2 text-zinc-600 hover:text-black transition-colors duration-200"
         >
           <ArrowLeft className="h-5 w-5" />
-          <span>Back to Details</span>
+          <span className="font-semibold">Back to Details</span>
         </button>
-        <h1 className="text-3xl font-noto font-semibold text-black ml-8">Payment</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 ml-6">Payment</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* GCash Payment Only */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-2xl font-noto font-medium text-black mb-6">💳 GCash Payment</h2>
-          
-          {/* GCash Payment Details with QR Code */}
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 mb-6 border-2 border-blue-300">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xl">G</span>
+        {/* GCash Payment Column */}
+        <div className="bg-white rounded-2xl shadow-md p-6 border border-zinc-200">
+          <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 mb-6">💳 GCash / InstaPay</h2>
+
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 mb-6 border-2 border-blue-300">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow">
+                <span className="text-white font-black text-xl">G</span>
               </div>
-              <h3 className="font-bold text-blue-900 text-lg">GCash Payment</h3>
+              <div>
+                <h3 className="font-bold text-blue-900 text-lg">GCash Payment</h3>
+                <p className="text-xs text-blue-700">Instant QR Code Scanning</p>
+              </div>
             </div>
-            
-            <div className="bg-white rounded-lg p-4 mb-4">
-              <p className="text-xl font-bold text-black mb-4 text-center">Amount to Pay: ₱{totalPrice}</p>
-              
-              {/* QR Code - Displayed at proper size for scanning */}
+
+            <div className="bg-white rounded-xl p-4 mb-4 shadow-inner">
+              <p className="text-xl font-black text-zinc-900 mb-4 text-center">
+                Amount to Pay: <span className="text-blue-600">₱{totalPrice}</span>
+              </p>
+
+              {/* QR Code */}
               <div className="flex justify-center mb-4">
-                <div className="w-72 h-72 rounded-lg border-4 border-blue-500 shadow-2xl overflow-hidden bg-white p-4 flex items-center justify-center">
-                  <img 
-                    src="/images/payment-qr/gcash-qr-code.jpg" 
-                    alt="GCash QR Code - Scan to Pay"
-                    className="w-full h-full"
-                    style={{ 
-                      objectFit: 'contain',
-                      imageRendering: 'crisp-edges'
-                    }}
-                    onError={(e) => {
-                      e.currentTarget.src = '/images/payment-qr/gcash-qr-code.png';
-                    }}
+                <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-3 flex items-center justify-center">
+                  <img
+                    src="/images/payment-qr/gcash-qr-code.jpg"
+                    alt="GCash QR Code"
+                    className="w-full h-full object-contain"
                   />
                 </div>
               </div>
-              
+
               <div className="text-center">
-                <p className="text-sm text-blue-800 font-semibold mb-2">📱 Scan QR Code to Pay via GCash</p>
-                <p className="text-xs text-gray-600">or use the details below</p>
+                <p className="text-sm text-blue-900 font-bold mb-1">📱 Scan with GCash App</p>
+                <p className="text-xs text-zinc-500">or send manually to the number below</p>
               </div>
             </div>
-            
+
             {/* Account Details */}
-            <div className="bg-white rounded-lg p-4 space-y-2">
-              <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                <span className="text-sm text-gray-600">Payment Method:</span>
-                <span className="font-semibold text-blue-900">GCash / InstaPay</span>
+            <div className="bg-white rounded-xl p-4 space-y-2 text-sm border border-blue-100">
+              <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
+                <span className="text-zinc-500">Payment Option:</span>
+                <span className="font-bold text-blue-900">GCash / InstaPay</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                <span className="text-sm text-gray-600">Mobile Number:</span>
-                <span className="font-mono font-semibold text-gray-900">0905 293 1408</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
+                <span className="text-zinc-500">Mobile Number:</span>
+                <span className="font-mono font-bold text-zinc-900">0905 293 1408</span>
               </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-gray-600">Account Name:</span>
-                <span className="font-semibold text-gray-900">Chick Central</span>
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-zinc-500">Account Name:</span>
+                <span className="font-bold text-zinc-900">Afoodable Bites</span>
               </div>
             </div>
           </div>
 
-          {/* Payment Instructions */}
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
-            <h4 className="font-bold text-yellow-900 mb-3 flex items-center">
-              <span className="text-xl mr-2">📸</span>
-              Payment Proof Required
+          {/* Payment Proof Notice */}
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+            <h4 className="font-bold text-amber-900 mb-2 flex items-center text-sm">
+              <span className="text-lg mr-2">📸</span>
+              Screenshot Payment Receipt
             </h4>
-            <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-              <li>Scan the QR code using your GCash app</li>
-              <li>Complete the payment of <span className="font-bold">₱{totalPrice}</span></li>
-              <li>Take a screenshot of your payment receipt</li>
-              <li>Attach the screenshot when sending your order via Messenger</li>
+            <ol className="text-xs sm:text-sm text-zinc-700 space-y-1.5 list-decimal list-inside">
+              <li>Scan the QR code and pay <strong className="text-zinc-900">₱{totalPrice}</strong></li>
+              <li>Take a screenshot of your successful transaction</li>
+              <li>Attach the screenshot when the Messenger chat opens</li>
             </ol>
-            <p className="text-xs text-gray-600 mt-3 italic">
-              💡 This helps us verify and process your order quickly!
-            </p>
           </div>
         </div>
 
-        {/* Order Summary */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-2xl font-noto font-medium text-black mb-6">Final Order Summary</h2>
-          
+        {/* Final Order Review & Messenger Submission */}
+        <div className="bg-white rounded-2xl shadow-md p-6 border border-zinc-200">
+          <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 mb-6">Final Order Summary</h2>
+
           <div className="space-y-4 mb-6">
-            <div className="bg-chick-beige rounded-lg p-4">
-              <h4 className="font-medium text-black mb-2">Customer Details</h4>
-              <p className="text-sm text-gray-600">Name: {customerName}</p>
-              <p className="text-sm text-gray-600">Contact: {contactNumber}</p>
-              <p className="text-sm text-gray-600">Service: {serviceType.charAt(0).toUpperCase() + serviceType.slice(1)}</p>
+            <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 text-sm">
+              <h4 className="font-bold text-zinc-900 mb-2">Customer & Service</h4>
+              <p className="text-zinc-700"><span className="text-zinc-500">Name:</span> {customerName}</p>
+              <p className="text-zinc-700"><span className="text-zinc-500">Contact:</span> {contactNumber}</p>
+              <p className="text-zinc-700">
+                <span className="text-zinc-500">Service:</span> {serviceType === 'dine-in' ? 'Dine In' : serviceType.charAt(0).toUpperCase() + serviceType.slice(1)}
+              </p>
               {serviceType === 'delivery' && (
                 <>
-                  <p className="text-sm text-gray-600">Address: {address}</p>
-                  {landmark && <p className="text-sm text-gray-600">Landmark: {landmark}</p>}
-                  <p className="text-sm text-gray-600">
-                    Delivery: {deliveryMethod === 'lalamove' 
-                      ? `Lalamove (${LALAMOVE_SERVICE_TYPES[lalamoveServiceType as keyof typeof LALAMOVE_SERVICE_TYPES]?.name})` 
-                      : 'Standard'}
-                  </p>
-                  {deliveryMethod === 'lalamove' && lalamoveQuote && (
-                    <p className="text-sm text-gray-600">
-                      Delivery Fee: ₱{parseFloat(lalamoveQuote.priceBreakdown.total).toFixed(2)}
-                    </p>
-                  )}
-                  {deliveryMethod === 'lalamove' && lalamoveOrder && (
-                    <div className="mt-3 pt-3 border-t border-orange-200">
-                      <p className="text-sm font-semibold text-orange-600 mb-2">
-                        {import.meta.env.VITE_LALAMOVE_USE_SANDBOX === 'true' ? '📦 Test Order Created!' : '🚚 Lalamove Order Created!'}
-                      </p>
-                      <p className="text-sm text-gray-600">Order ID: {lalamoveOrder.orderId}</p>
-                      {import.meta.env.VITE_LALAMOVE_USE_SANDBOX === 'true' ? (
-                        <p className="text-xs text-amber-600 mt-2 bg-amber-50 p-2 rounded">
-                          ⚠️ Test Mode: Switch to production credentials for real tracking
-                        </p>
-                      ) : (
-                        lalamoveOrder.trackingUrl && (
-                          <a 
-                            href={lalamoveOrder.trackingUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-block mt-2 text-sm text-white bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg transition-colors"
-                          >
-                            Track Delivery 🔗
-                          </a>
-                        )
-                      )}
-                    </div>
-                  )}
+                  <p className="text-zinc-700"><span className="text-zinc-500">Address:</span> {address}</p>
+                  {landmark && <p className="text-zinc-700"><span className="text-zinc-500">Landmark:</span> {landmark}</p>}
                 </>
               )}
               {serviceType === 'pickup' && (
-                <p className="text-sm text-gray-600">
-                  Pickup Time: {pickupTime === 'custom' ? customTime : `${pickupTime} minutes`}
-                </p>
-              )}
-              {serviceType === 'dine-in' && (
-                <p className="text-sm text-gray-600">
-                  Party Size: {partySize} person{partySize !== 1 ? 's' : ''}
+                <p className="text-zinc-700">
+                  <span className="text-zinc-500">Pickup Time:</span> {pickupTime === 'custom' ? customTime : `${pickupTime} minutes`}
                 </p>
               )}
             </div>
 
-            {cartItems.map((item) => {
-              return (
-                <div key={item.id} className="flex items-center space-x-3 py-2 border-b border-chick-beige">
-                  {/* Variation Image - Only show if uploaded */}
-                  {item.selectedVariation?.image && (
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                      <img 
-                        src={item.selectedVariation.image}
-                        alt={item.selectedVariation.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  
+            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex items-center space-x-3 py-2 border-b border-zinc-100">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-black">{item.name}</h4>
-                    {item.selectedVariations && item.selectedVariations.length > 0 ? (
-                      <p className="text-sm text-gray-600">Flavors: {item.selectedVariations.map(v => v.name).join(' + ')}</p>
-                    ) : item.selectedVariation ? (
-                      <p className="text-sm text-gray-600">Flavor: {item.selectedVariation.name}</p>
-                    ) : null}
+                    <h4 className="font-bold text-zinc-900 text-sm truncate">{item.name}</h4>
                     {item.selectedAddOns && item.selectedAddOns.length > 0 && (
-                      <p className="text-sm text-gray-600">
-                        Add-ons: {item.selectedAddOns.map(addOn => 
-                          addOn.quantity && addOn.quantity > 1 
-                            ? `${addOn.name} x${addOn.quantity}`
-                            : addOn.name
-                        ).join(', ')}
+                      <p className="text-xs text-zinc-500">
+                        + {item.selectedAddOns.map(addOn => addOn.name).join(', ')}
                       </p>
                     )}
-                    <p className="text-sm text-gray-600">₱{item.totalPrice} x {item.quantity}</p>
+                    <p className="text-xs text-zinc-500">₱{item.totalPrice} x {item.quantity}</p>
                   </div>
-                  <span className="font-semibold text-black">₱{item.totalPrice * item.quantity}</span>
+                  <span className="font-bold text-zinc-900 text-sm">₱{item.totalPrice * item.quantity}</span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-          
-          <div className="border-t border-chick-golden pt-4 mb-6">
-            <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black">
+
+          <div className="border-t-2 border-amber-400 pt-4 mb-6">
+            <div className="flex items-center justify-between text-2xl font-black text-zinc-900">
               <span>Total:</span>
-              <span>₱{totalPrice}</span>
+              <span className="text-amber-600">₱{totalPrice}</span>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={handlePlaceOrder}
-            className="w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform bg-chick-gradient text-white hover:shadow-2xl hover:scale-[1.02]"
+            className="w-full py-4 rounded-xl font-black text-lg transition-all duration-200 transform bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white hover:shadow-xl hover:scale-[1.01] active:scale-95 flex items-center justify-center space-x-2 shadow-lg"
           >
-            {serviceType === 'delivery' && deliveryMethod === 'lalamove' && lalamoveOrder
-              ? (import.meta.env.VITE_LALAMOVE_USE_SANDBOX === 'true' 
-                  ? '📦 View Order Details (Test Mode)' 
-                  : '🚚 Track Your Lalamove Delivery')
-              : 'Place Order via Messenger'}
+            <span>Place Order via Messenger</span>
+            <span>💬</span>
           </button>
-          
-          <p className="text-xs text-gray-500 text-center mt-3">
-            {serviceType === 'delivery' && deliveryMethod === 'lalamove' && lalamoveOrder
-              ? (import.meta.env.VITE_LALAMOVE_USE_SANDBOX === 'true'
-                  ? '⚠️ Test Mode: Tracking links work only with production credentials. Order details will be sent via Messenger.'
-                  : 'Click to open Lalamove tracking and monitor your delivery in real-time!')
-              : "You'll be redirected to Facebook Messenger to confirm your order. Don't forget to attach your payment screenshot!"}
+
+          <p className="text-xs text-zinc-500 text-center mt-3">
+            You will be redirected to Facebook Messenger with your order summary pre-filled. Please attach your GCash payment screenshot to confirm!
           </p>
         </div>
       </div>

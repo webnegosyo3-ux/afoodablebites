@@ -1,13 +1,26 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { SiteSettings, SiteSetting } from '../types';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { SiteSettings } from '../types';
+
+const DEFAULT_SETTINGS: SiteSettings = {
+  site_name: 'Afoodable Bites',
+  site_logo: '/images/afodable-bites-logo.jpg',
+  site_description: 'Always Serving Hot! Sizzling Specialties, Hearty Rice Meals, and Comfort Soups.',
+  currency: '₱',
+  currency_code: 'PHP'
+};
 
 export const useSiteSettings = () => {
-  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSiteSettings = async () => {
+    if (!isSupabaseConfigured) {
+      setSiteSettings(DEFAULT_SETTINGS);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -19,19 +32,24 @@ export const useSiteSettings = () => {
 
       if (error) throw error;
 
-      // Transform the data into a more usable format
+      if (!data || data.length === 0) {
+        setSiteSettings(DEFAULT_SETTINGS);
+        return;
+      }
+
       const settings: SiteSettings = {
-        site_name: data.find(s => s.id === 'site_name')?.value || 'Beracah Cafe',
-        site_logo: data.find(s => s.id === 'site_logo')?.value || '',
-        site_description: data.find(s => s.id === 'site_description')?.value || '',
-        currency: data.find(s => s.id === 'currency')?.value || 'PHP',
+        site_name: data.find(s => s.id === 'site_name')?.value || 'Afoodable Bites',
+        site_logo: data.find(s => s.id === 'site_logo')?.value || '/images/afodable-bites-logo.jpg',
+        site_description: data.find(s => s.id === 'site_description')?.value || DEFAULT_SETTINGS.site_description,
+        currency: data.find(s => s.id === 'currency')?.value || '₱',
         currency_code: data.find(s => s.id === 'currency_code')?.value || 'PHP'
       };
 
       setSiteSettings(settings);
     } catch (err) {
-      console.error('Error fetching site settings:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch site settings');
+      console.warn('Error fetching site settings from Supabase, using defaults:', err);
+      setSiteSettings(DEFAULT_SETTINGS);
+      setError(err instanceof Error ? err.message : 'Using default settings');
     } finally {
       setLoading(false);
     }
@@ -47,8 +65,6 @@ export const useSiteSettings = () => {
         .eq('id', id);
 
       if (error) throw error;
-
-      // Refresh the settings
       await fetchSiteSettings();
     } catch (err) {
       console.error('Error updating site setting:', err);
@@ -61,22 +77,17 @@ export const useSiteSettings = () => {
     try {
       setError(null);
 
-      const updatePromises = Object.entries(updates).map(([key, value]) =>
-        supabase
-          .from('site_settings')
-          .update({ value })
-          .eq('id', key)
-      );
+      const updatePromises = Object.entries(updates).map(([id, value]) => {
+        if (value !== undefined) {
+          return supabase
+            .from('site_settings')
+            .update({ value })
+            .eq('id', id);
+        }
+        return Promise.resolve();
+      });
 
-      const results = await Promise.all(updatePromises);
-      
-      // Check for errors
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        throw new Error('Some updates failed');
-      }
-
-      // Refresh the settings
+      await Promise.all(updatePromises);
       await fetchSiteSettings();
     } catch (err) {
       console.error('Error updating site settings:', err);

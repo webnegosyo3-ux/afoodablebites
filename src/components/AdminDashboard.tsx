@@ -996,7 +996,7 @@ const AdminDashboard: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <div className="text-3xl">🐔</div>
-              <h1 className="text-2xl font-bold text-chick-dark">Chick Central Admin</h1>
+              <h1 className="text-2xl font-bold text-zinc-900">Afoodable Bites Admin</h1>
             </div>
             <div className="flex items-center space-x-4">
               <a

@@ -156,7 +156,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           onClick={() => onImageChange('/images/chick-central-logo.jpg')}
           className="text-xs px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors"
         >
-          🐔 Use Chick Central Logo
+          🍲 Use Afoodable Bites Logo
         </button>
         
         <p className="text-xs text-gray-500">
