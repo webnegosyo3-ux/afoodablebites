@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame } from 'lucide-react';
 import { CartItem, ServiceType, AdminOrder } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useOrders } from '../hooks/useOrders';
@@ -28,7 +28,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
   const [placedOrder, setPlacedOrder] = useState<AdminOrder | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
 
   // Selected payment method ID
   const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
@@ -96,15 +95,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
     } else {
       onBack();
     }
-  };
-
-  const copyOrderCode = () => {
-    if (!placedOrder) return;
-    try {
-      navigator.clipboard.writeText(placedOrder.id);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    } catch {}
   };
 
   const isDetailsValid = Boolean(
@@ -543,30 +533,9 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
             <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight mb-1">
               Order Confirmed!
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-600 font-medium mb-5">
+            <p className="text-xs sm:text-sm text-zinc-600 font-medium mb-6">
               Salamat, <strong className="text-zinc-900">{placedOrder.customerName}</strong>! Natanggap na ang iyong order sa aming kusina.
             </p>
-
-            {/* Order Reference Box */}
-            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3.5 mb-5">
-              <span className="text-[11px] font-bold text-amber-800 uppercase tracking-widest block">
-                Order Reference No.
-              </span>
-              <div className="flex items-center justify-center space-x-2 mt-0.5">
-                <span className="text-2xl font-black text-amber-600 tracking-wider">
-                  #{placedOrder.id}
-                </span>
-                <button
-                  type="button"
-                  onClick={copyOrderCode}
-                  className="p-1 text-amber-700 hover:text-amber-900 transition"
-                  title="Copy reference number"
-                >
-                  {copiedCode ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-              {copiedCode && <span className="text-[10px] text-emerald-600 font-bold block">Copied to clipboard!</span>}
-            </div>
 
             {/* Order Summary Snapshot */}
             <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3.5 text-left text-xs space-y-1.5 mb-5">
