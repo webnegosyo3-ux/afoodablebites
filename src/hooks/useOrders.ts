@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { AdminOrder, OrderStatus, CartItem } from '../types';
 
 const LOCAL_STORAGE_KEY = 'afoodable_orders_v1';
+const PING_KEY = 'afoodable_order_ping';
 
 export interface CreateOrderInput {
   customerName: string;
@@ -35,10 +36,12 @@ export const useOrders = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const previousOrdersCountRef = useRef(orders.length);
 
   const saveToLocal = (newOrders: AdminOrder[]) => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newOrders));
+      localStorage.setItem(PING_KEY, Date.now().toString());
       setOrders(newOrders);
     } catch {
       // ignore
@@ -46,7 +49,20 @@ export const useOrders = () => {
   };
 
   const fetchOrders = useCallback(async () => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      // Check local storage in case another tab updated it
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setOrders(parsed);
+          }
+        }
+      } catch {}
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -56,7 +72,6 @@ export const useOrders = () => {
         .order('created_at', { ascending: false });
 
       if (fetchErr) {
-        // Table might not exist yet, fallback cleanly to local
         console.warn('Supabase fetch orders notice:', fetchErr.message);
         return;
       }
@@ -70,7 +85,7 @@ export const useOrders = () => {
           address: d.address,
           landmark: d.landmark,
           pickupTime: d.pickup_time || d.pickupTime,
-          paymentMethod: d.payment_method || d.paymentMethod || 'GCash',
+          paymentMethod: d.payment_method || d.paymentMethod || 'Cash on Delivery',
           total: Number(d.total) || 0,
           items: Array.isArray(d.items) ? d.items : typeof d.items === 'string' ? JSON.parse(d.items) : [],
           notes: d.notes,
@@ -90,6 +105,61 @@ export const useOrders = () => {
 
   useEffect(() => {
     fetchOrders();
+
+    // Listen to changes from other tabs via storage events
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === LOCAL_STORAGE_KEY || e.key === PING_KEY) {
+        try {
+          const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              setOrders(parsed);
+              if (parsed.length > previousOrdersCountRef.current && parsed[0]) {
+                window.dispatchEvent(
+                  new CustomEvent('afoodable_new_order_event', { detail: parsed[0] })
+                );
+              }
+              previousOrdersCountRef.current = parsed.length;
+            }
+          }
+        } catch {}
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Supabase Realtime subscription if available
+    let realtimeChannel: any = null;
+    if (isSupabaseConfigured) {
+      try {
+        realtimeChannel = supabase
+          .channel('orders-realtime')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'orders' },
+            () => {
+              fetchOrders();
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.warn('Realtime subscription error:', err);
+      }
+    }
+
+    // Polling interval every 6 seconds as a robust fallback
+    const pollInterval = setInterval(() => {
+      fetchOrders();
+    }, 6000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(pollInterval);
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+    };
   }, [fetchOrders]);
 
   const createOrder = async (input: CreateOrderInput): Promise<AdminOrder> => {
@@ -108,6 +178,12 @@ export const useOrders = () => {
 
     const updated = [newOrder, ...orders];
     saveToLocal(updated);
+    previousOrdersCountRef.current = updated.length;
+
+    // Dispatch custom event for same-tab listeners (e.g. if admin is in same app or tests)
+    window.dispatchEvent(
+      new CustomEvent('afoodable_new_order_event', { detail: newOrder })
+    );
 
     if (isSupabaseConfigured) {
       try {
@@ -177,6 +253,7 @@ export const useOrders = () => {
 
   const clearAllOrders = async () => {
     saveToLocal([]);
+    previousOrdersCountRef.current = 0;
     if (isSupabaseConfigured) {
       try {
         await supabase.from('orders').delete().neq('id', '');

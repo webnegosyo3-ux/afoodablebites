@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp,
   Package, Users, Lock, FolderOpen, CreditCard, Settings, Sparkles, Flame,
-  ShoppingBag
+  ShoppingBag, Bell, BellOff
 } from 'lucide-react';
-import { MenuItem, Variation, AddOn } from '../types';
+import { MenuItem, Variation, AddOn, AdminOrder } from '../types';
 import { addOnCategories } from '../data/menuData';
 import { useMenu } from '../hooks/useMenu';
 import { useCategories } from '../hooks/useCategories';
 import { useOrders } from '../hooks/useOrders';
+import {
+  isSoundAlertEnabled,
+  setSoundAlertEnabled,
+  testOrderChime,
+  playOrderRingtone,
+  stopOrderRingtone
+} from '../utils/audioAlert';
 import ImageUpload from './ImageUpload';
 import CategoryManager from './CategoryManager';
 import PaymentMethodManager from './PaymentMethodManager';
@@ -95,6 +102,56 @@ const AdminDashboard: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const [soundEnabled, setSoundEnabledState] = useState<boolean>(isSoundAlertEnabled());
+  const [activeNewOrderAlert, setActiveNewOrderAlert] = useState<AdminOrder | null>(null);
+  const initialOrdersCountRef = useRef<number | null>(null);
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabledState(next);
+    setSoundAlertEnabled(next);
+    if (next) {
+      testOrderChime();
+    } else {
+      stopOrderRingtone();
+    }
+  };
+
+  // Track incoming new orders from hook
+  useEffect(() => {
+    if (initialOrdersCountRef.current === null) {
+      initialOrdersCountRef.current = orders.length;
+      orders.forEach(o => knownOrderIdsRef.current.add(o.id));
+      return;
+    }
+
+    const newArrival = orders.find(
+      o => !knownOrderIdsRef.current.has(o.id) && o.status === 'pending'
+    );
+    if (newArrival) {
+      knownOrderIdsRef.current.add(newArrival.id);
+      setActiveNewOrderAlert(newArrival);
+      playOrderRingtone(4);
+    }
+  }, [orders]);
+
+  // Also listen for real-time dispatch events
+  useEffect(() => {
+    const handler = (e: any) => {
+      const newOrder = e.detail as AdminOrder;
+      if (newOrder) {
+        knownOrderIdsRef.current.add(newOrder.id);
+        setActiveNewOrderAlert(newOrder);
+        playOrderRingtone(4);
+      }
+    };
+    window.addEventListener('afoodable_new_order_event', handler);
+    return () => {
+      window.removeEventListener('afoodable_new_order_event', handler);
+    };
+  }, []);
+
   const [formData, setFormData] = useState<Partial<MenuItem>>({
     name: '', description: '', basePrice: 0,
     category: 'sizzling-meals', popular: false, available: true,
@@ -186,9 +243,17 @@ const AdminDashboard: React.FC = () => {
     e.preventDefault();
     if (password === 'admin@afoodablebites') {
       setIsAuthenticated(true); localStorage.setItem('beracah_admin_auth', 'true'); setLoginError('');
+      // Activate audio context on login gesture
+      testOrderChime();
     } else { setLoginError('Incorrect password. Try again.'); }
   };
-  const handleLogout = () => { setIsAuthenticated(false); localStorage.removeItem('beracah_admin_auth'); setPassword(''); setCurrentView('dashboard'); };
+  const handleLogout = () => {
+    stopOrderRingtone();
+    setIsAuthenticated(false);
+    localStorage.removeItem('beracah_admin_auth');
+    setPassword('');
+    setCurrentView('dashboard');
+  };
 
   // Stats
   const totalItems = menuItems.length;
@@ -301,22 +366,82 @@ const AdminDashboard: React.FC = () => {
     );
   }
 
+  // ── FLOATING INCOMING ORDER ALERT BANNER ─────────────────────────────────────
+  const floatingAlertBanner = activeNewOrderAlert && (
+    <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 text-white p-4 rounded-2xl shadow-2xl border-2 border-yellow-300 animate-bounce flex flex-col space-y-2.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <span className="text-2xl animate-spin">🔔</span>
+          <span className="font-black text-sm uppercase tracking-wider">BAGONG ORDER DUMATING!</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            stopOrderRingtone();
+            setActiveNewOrderAlert(null);
+          }}
+          className="text-white/80 hover:text-white text-xs font-bold bg-black/20 hover:bg-black/40 rounded-full w-6 h-6 flex items-center justify-center"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="text-xs bg-black/30 backdrop-blur-sm rounded-xl p-3 space-y-1">
+        <div className="flex justify-between font-bold">
+          <span>Order #{activeNewOrderAlert.id}</span>
+          <span className="text-amber-200">₱{activeNewOrderAlert.total}</span>
+        </div>
+        <p className="text-amber-100 truncate font-semibold">
+          {activeNewOrderAlert.customerName} ({activeNewOrderAlert.contactNumber})
+        </p>
+        <p className="text-amber-200 text-[11px]">
+          {activeNewOrderAlert.serviceType.toUpperCase()} • {activeNewOrderAlert.paymentMethod}
+        </p>
+      </div>
+      <div className="flex items-center space-x-2 pt-1">
+        <button
+          type="button"
+          onClick={() => {
+            stopOrderRingtone();
+            setActiveNewOrderAlert(null);
+            setCurrentView('orders');
+          }}
+          className="flex-1 py-2 bg-white text-zinc-950 rounded-xl font-black text-xs hover:bg-yellow-100 transition shadow flex items-center justify-center space-x-1"
+        >
+          <span>Tingnan ang Order</span>
+          <span>📋</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            stopOrderRingtone();
+            setActiveNewOrderAlert(null);
+          }}
+          className="px-3 py-2 bg-black/30 hover:bg-black/50 text-white rounded-xl font-bold text-xs transition"
+        >
+          Stop Ring 🔕
+        </button>
+      </div>
+    </div>
+  );
+
   // ── ADD / EDIT ITEM FORM ─────────────────────────────────────────────────────
   if (currentView === 'add' || currentView === 'edit') {
     return (
-      <div className="min-h-screen bg-zinc-950">
-        <AdminTopbar
-          title={currentView === 'add' ? '➕ Add Menu Item' : '✏️ Edit Menu Item'}
-          onBack={handleCancel} backLabel="Menu Items"
-          right={
-            <>
-              <GhostBtn onClick={handleCancel} disabled={isProcessing}><X className="h-4 w-4" /><span>Cancel</span></GhostBtn>
-              <PrimaryBtn onClick={handleSaveItem} loading={isProcessing} disabled={isProcessing}>
-                <Save className="h-4 w-4" /><span>Save Item</span>
-              </PrimaryBtn>
-            </>
-          }
-        />
+      <>
+        {floatingAlertBanner}
+        <div className="min-h-screen bg-zinc-950">
+          <AdminTopbar
+            title={currentView === 'add' ? '➕ Add Menu Item' : '✏️ Edit Menu Item'}
+            onBack={handleCancel} backLabel="Menu Items"
+            right={
+              <>
+                <GhostBtn onClick={handleCancel} disabled={isProcessing}><X className="h-4 w-4" /><span>Cancel</span></GhostBtn>
+                <PrimaryBtn onClick={handleSaveItem} loading={isProcessing} disabled={isProcessing}>
+                  <Save className="h-4 w-4" /><span>Save Item</span>
+                </PrimaryBtn>
+              </>
+            }
+          />
 
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
           {isProcessing && (
@@ -448,16 +573,19 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    );
-  }
+    </>
+  );
+}
 
   // ── MENU ITEMS LIST ──────────────────────────────────────────────────────────
   if (currentView === 'items') {
     return (
-      <div className="min-h-screen bg-zinc-950">
-        <AdminTopbar
-          title="🍽️ Menu Items"
-          onBack={() => setCurrentView('dashboard')}
+      <>
+        {floatingAlertBanner}
+        <div className="min-h-screen bg-zinc-950">
+          <AdminTopbar
+            title="🍽️ Menu Items"
+            onBack={() => setCurrentView('dashboard')}
           right={
             <>
               {showBulkActions && selectedItems.length > 0 && (
@@ -610,51 +738,78 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    );
-  }
+    </>
+  );
+}
 
   // ── SUBVIEWS (delegate) ──────────────────────────────────────────────────────
-  if (currentView === 'orders') return <OrdersManager onBack={() => setCurrentView('dashboard')} />;
-  if (currentView === 'categories') return <CategoryManager onBack={() => setCurrentView('dashboard')} />;
-  if (currentView === 'payments') return <PaymentMethodManager onBack={() => setCurrentView('dashboard')} />;
-  if (currentView === 'welcome') return <WelcomePageManager onBack={() => setCurrentView('dashboard')} />;
+  if (currentView === 'orders') return <>{floatingAlertBanner}<OrdersManager onBack={() => setCurrentView('dashboard')} /></>;
+  if (currentView === 'categories') return <>{floatingAlertBanner}<CategoryManager onBack={() => setCurrentView('dashboard')} /></>;
+  if (currentView === 'payments') return <>{floatingAlertBanner}<PaymentMethodManager onBack={() => setCurrentView('dashboard')} /></>;
+  if (currentView === 'welcome') return <>{floatingAlertBanner}<WelcomePageManager onBack={() => setCurrentView('dashboard')} /></>;
 
   if (currentView === 'settings') {
     return (
-      <div className="min-h-screen bg-zinc-950">
-        <AdminTopbar title="⚙️ Site Settings" onBack={() => setCurrentView('dashboard')} />
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <SiteSettingsManager />
+      <>
+        {floatingAlertBanner}
+        <div className="min-h-screen bg-zinc-950">
+          <AdminTopbar title="⚙️ Site Settings" onBack={() => setCurrentView('dashboard')} />
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            <SiteSettingsManager />
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // ── MAIN DASHBOARD ───────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-zinc-950">
-      {/* Topbar */}
-      <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <img src="/images/afodable-bites-logo.jpg" alt="Afoodable Bites" className="w-9 h-9 rounded-full object-cover ring-2 ring-amber-500/40"
-                onError={e => { e.currentTarget.src = '/logo.jpg'; }} />
-              <div>
-                <div className="flex items-center space-x-1.5">
-                  <span className="text-white font-black text-lg leading-none">Afoodable Bites</span>
-                  <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
+    <>
+      {floatingAlertBanner}
+      <div className="min-h-screen bg-zinc-950">
+        {/* Topbar */}
+        <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-3">
+                <img src="/images/afodable-bites-logo.jpg" alt="Afoodable Bites" className="w-9 h-9 rounded-full object-cover ring-2 ring-amber-500/40"
+                  onError={e => { e.currentTarget.src = '/logo.jpg'; }} />
+                <div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-white font-black text-lg leading-none">Afoodable Bites</span>
+                    <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
+                  </div>
+                  <span className="text-amber-400 text-xs font-semibold">Admin Dashboard</span>
                 </div>
-                <span className="text-amber-400 text-xs font-semibold">Admin Dashboard</span>
               </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <a href="/" className="text-xs text-zinc-400 hover:text-amber-400 transition font-medium">View Site ↗</a>
-              <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-red-400 transition font-medium">Logout</button>
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <button
+                  type="button"
+                  onClick={toggleSound}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition border ${
+                    soundEnabled
+                      ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
+                      : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
+                  }`}
+                  title={soundEnabled ? 'Click to Mute Ringtone' : 'Click to Enable Ringtone'}
+                >
+                  {soundEnabled ? <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" /> : <BellOff className="w-3.5 h-3.5" />}
+                  <span>{soundEnabled ? 'Ring: ON' : 'Ring: MUTED'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => testOrderChime()}
+                  className="text-[11px] text-zinc-400 hover:text-amber-400 underline font-medium hidden sm:inline"
+                  title="Test notification ring chime"
+                >
+                  Test Sound 🔔
+                </button>
+                <a href="/" className="text-xs text-zinc-400 hover:text-amber-400 transition font-medium">View Site ↗</a>
+                <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-red-400 transition font-medium">Logout</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
@@ -815,6 +970,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

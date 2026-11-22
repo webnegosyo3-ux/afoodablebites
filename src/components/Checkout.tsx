@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2 } from 'lucide-react';
-import { CartItem, ServiceType } from '../types';
+import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Check } from 'lucide-react';
+import { CartItem, ServiceType, AdminOrder } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useOrders } from '../hooks/useOrders';
 
@@ -8,11 +8,10 @@ interface CheckoutProps {
   cartItems: CartItem[];
   totalPrice: number;
   onBack: () => void;
+  onOrderSuccess?: () => void;
 }
 
-const FB_PAGE_MESSENGER_ID = '61595737646110';
-
-const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) => {
+const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOrderSuccess }) => {
   const { activePaymentMethods } = usePaymentMethods();
   const { createOrder } = useOrders();
   const [step, setStep] = useState<'details' | 'payment'>('details');
@@ -25,9 +24,15 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [customTime, setCustomTime] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Placed Order state & Modal Pop-up
+  const [placedOrder, setPlacedOrder] = useState<AdminOrder | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
   // Selected payment method ID
   const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
-    return activePaymentMethods.length > 0 ? activePaymentMethods[0].id : 'payment-gcash';
+    return activePaymentMethods.length > 0 ? activePaymentMethods[0].id : 'payment-cod';
   });
 
   // Keep selectedPaymentId valid if active methods update
@@ -48,90 +53,65 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     setStep('payment');
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     const timeInfo = serviceType === 'pickup'
       ? (pickupTime === 'custom' ? customTime : `${pickupTime} minutes`)
       : '';
 
-    const serviceName = serviceType === 'dine-in'
-      ? 'Dine In'
-      : serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
-
     const paymentText = isCod
-      ? 'Cash on Delivery (COD) / Pay at Counter (No advance payment)'
-      : `${currentMethod?.name || 'GCash'} (Payment Screenshot Attached)`;
+      ? 'Cash on Delivery (COD)'
+      : (currentMethod?.name || 'GCash');
 
-    const orderDetails = `
-AFOODABLE BITES ORDER 🍲
-
-Customer: ${customerName}
-Contact: ${contactNumber}
-Service Type: ${serviceName}
-${serviceType === 'delivery' ? `Address: ${address}${landmark ? `\nLandmark: ${landmark}` : ''}` : ''}
-${serviceType === 'pickup' ? `Estimated Pickup Time: ${timeInfo}` : ''}
-
-ORDER DETAILS:
-${cartItems.map(item => {
-      let itemDetails = `- ${item.name}`;
-      if (item.selectedVariations && item.selectedVariations.length > 0) {
-        itemDetails += ` (${item.selectedVariations.map(v => v.name).join(' + ')})`;
-      } else if (item.selectedVariation) {
-        itemDetails += ` (${item.selectedVariation.name})`;
-      }
-      if (item.selectedAddOns && item.selectedAddOns.length > 0) {
-        itemDetails += ` + ${item.selectedAddOns.map(addOn =>
-          addOn.quantity && addOn.quantity > 1
-            ? `${addOn.name} x${addOn.quantity}`
-            : addOn.name
-        ).join(', ')}`;
-      }
-      itemDetails += ` x${item.quantity} - ₱${item.totalPrice * item.quantity}`;
-      return itemDetails;
-    }).join('\n')}
-
-TOTAL: ₱${totalPrice}
-
-Payment Method: ${paymentText}
-
-${notes ? `Special Notes: ${notes}` : ''}
-
-Please confirm this order to proceed. Thank you for dining with Afoodable Bites! Always Serving Hot! 🔥
-    `.trim();
-
-    const encodedMessage = encodeURIComponent(orderDetails);
-    const messengerUrl = `https://m.me/${FB_PAGE_MESSENGER_ID}?text=${encodedMessage}`;
-
-    // Record order in Admin Dashboard & Database
     try {
-      createOrder({
-        customerName,
-        contactNumber,
+      const order = await createOrder({
+        customerName: customerName.trim(),
+        contactNumber: contactNumber.trim(),
         serviceType,
-        address: serviceType === 'delivery' ? address : undefined,
-        landmark: serviceType === 'delivery' ? landmark : undefined,
+        address: serviceType === 'delivery' ? address.trim() : undefined,
+        landmark: serviceType === 'delivery' && landmark ? landmark.trim() : undefined,
         pickupTime: timeInfo || undefined,
-        paymentMethod: isCod ? 'Cash on Delivery (COD)' : (currentMethod?.name || 'GCash'),
+        paymentMethod: paymentText,
         total: totalPrice,
         items: cartItems,
-        notes: notes || undefined
+        notes: notes ? notes.trim() : undefined
       });
-    } catch (err) {
-      console.warn('Could not save order record:', err);
-    }
 
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      window.location.href = messengerUrl;
-    } else {
-      window.open(messengerUrl, '_blank');
+      setPlacedOrder(order);
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.error('Failed to submit order:', err);
+      alert('May problemang naganap habang sine-save ang order. Subukan muli.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const handleFinishOrder = () => {
+    setShowSuccessModal(false);
+    if (onOrderSuccess) {
+      onOrderSuccess();
+    } else {
+      onBack();
+    }
+  };
+
+  const copyOrderCode = () => {
+    if (!placedOrder) return;
+    try {
+      navigator.clipboard.writeText(placedOrder.id);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {}
+  };
+
   const isDetailsValid = Boolean(
-    customerName &&
-    contactNumber &&
-    (serviceType !== 'delivery' || address) &&
-    (serviceType !== 'pickup' || (pickupTime !== 'custom' || customTime))
+    customerName.trim() &&
+    contactNumber.trim() &&
+    (serviceType !== 'delivery' || address.trim()) &&
+    (serviceType !== 'pickup' || (pickupTime !== 'custom' || customTime.trim()))
   );
 
   if (step === 'details') {
@@ -240,7 +220,7 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-sm text-amber-900">
                   <p className="font-bold">🍽️ Dine-In Order</p>
                   <p className="text-xs text-amber-800 mt-1">
-                    Just complete your order and show your payment details at the counter when you arrive. Table seating is open and ready!
+                    Direct pasok ang order sa kusina. Pagkarating mo sa restaurant, nakapila na ito at agad ihahain!
                   </p>
                 </div>
               )}
@@ -308,7 +288,7 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
                       value={landmark}
                       onChange={(e) => setLandmark(e.target.value)}
                       className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Nearby school, church, mall, etc."
+                      placeholder="Nearby school, church, store, etc."
                     />
                   </div>
                 </>
@@ -356,7 +336,7 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
           <ArrowLeft className="h-5 w-5" />
           <span className="font-semibold">Back to Details</span>
         </button>
-        <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 ml-6">Payment</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 ml-6">Payment & Confirmation</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -399,58 +379,37 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
 
           {/* Selected Method Display Details */}
           {isCod ? (
-            /* Cash on Delivery Details Box */
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-300 text-zinc-900">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-12 h-12 bg-amber-500 text-white rounded-full flex items-center justify-center shadow">
-                  <Banknote className="w-7 h-7" />
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-300 space-y-4 shadow-inner">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center text-2xl shadow-md">
+                  💵
                 </div>
                 <div>
-                  <h3 className="font-bold text-amber-950 text-lg">Cash on Delivery / Counter</h3>
-                  <p className="text-xs text-amber-800">No advance payment required</p>
+                  <h3 className="font-black text-amber-950 text-base">Cash on Delivery / Pay at Counter</h3>
+                  <p className="text-xs text-amber-800 font-semibold">No upfront payment required</p>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-amber-100 text-center">
-                <p className="text-sm font-semibold text-zinc-600">Total Cash to Prepare:</p>
-                <p className="text-3xl font-black text-amber-600 my-1">₱{totalPrice}</p>
-                <p className="text-xs text-zinc-500">
-                  Please prepare exact amount if possible upon {serviceType === 'delivery' ? 'rider arrival' : 'pickup / dining'}
-                </p>
-              </div>
-
-              <div className="bg-amber-100/70 rounded-xl p-4 text-xs sm:text-sm text-amber-900 space-y-1.5">
-                <p className="font-bold flex items-center space-x-1">
-                  <span>✅</span>
-                  <span>Instant Confirmation</span>
-                </p>
-                <p>Your order will be prepared as soon as confirmed via Messenger.</p>
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-amber-200 text-xs sm:text-sm text-zinc-700 space-y-2">
+                <p className="font-bold text-zinc-900">✅ How COD Works:</p>
+                <ul className="space-y-1 list-disc list-inside text-zinc-600">
+                  <li>Your order goes directly to our kitchen & admin dashboard.</li>
+                  <li>We immediately begin cooking your meal fresh and hot!</li>
+                  <li>Please prepare exact cash amount of <strong className="text-amber-700 font-black">₱{totalPrice}</strong> upon pickup or delivery.</li>
+                </ul>
               </div>
             </div>
           ) : (
-            /* Digital Wallet (GCash/Maya) Details Box */
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border-2 border-blue-300">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow">
-                  <span className="text-white font-black text-xl">
-                    {currentMethod?.name.charAt(0) || 'G'}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-blue-900 text-lg">{currentMethod?.name || 'GCash Payment'}</h3>
-                  <p className="text-xs text-blue-700">QR Code Scanning & Transfer</p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl p-4 mb-4 shadow-inner">
-                <p className="text-xl font-black text-zinc-900 mb-4 text-center">
-                  Amount to Pay: <span className="text-blue-600">₱{totalPrice}</span>
-                </p>
+            <div className="bg-blue-50/50 rounded-2xl p-5 border border-blue-200 space-y-4">
+              <div className="bg-white rounded-xl p-4 border border-blue-100 shadow-sm">
+                <h3 className="font-bold text-zinc-900 text-center mb-3">
+                  Scan to Pay with {currentMethod?.name || 'GCash'}
+                </h3>
 
                 {/* QR Code */}
                 {currentMethod?.qr_code_url && (
                   <div className="flex justify-center mb-4">
-                    <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-3 flex items-center justify-center">
+                    <div className="w-60 h-60 sm:w-64 sm:h-64 rounded-xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-3 flex items-center justify-center">
                       <img
                         src={currentMethod.qr_code_url}
                         alt={`${currentMethod.name} QR Code`}
@@ -481,21 +440,15 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
                 </div>
               </div>
 
-              {/* Payment Proof Notice */}
-              <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mt-4">
-                <h4 className="font-bold text-amber-900 mb-1.5 flex items-center text-sm">
-                  <span className="text-lg mr-2">📸</span>
-                  Screenshot Payment Receipt
-                </h4>
-                <p className="text-xs text-zinc-700">
-                  Attach your transaction screenshot in the Messenger chat so we can verify your payment immediately!
-                </p>
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-xs text-amber-900">
+                <p className="font-semibold">💡 Paalala:</p>
+                <p className="text-zinc-600 mt-0.5">I-screenshot o itabi ang resibo para sa mabilisang verification kapag dumating ang inyong pagkain.</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Final Order Review & Messenger Submission */}
+        {/* Final Order Review & Direct Order Placement */}
         <div className="bg-white rounded-2xl shadow-md p-6 border border-zinc-200">
           <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 mb-6">Final Order Summary</h2>
 
@@ -523,7 +476,7 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
               </p>
             </div>
 
-            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+            <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
               {cartItems.map((item) => (
                 <div key={item.id} className="flex items-center space-x-3 py-2 border-b border-zinc-100">
                   <div className="flex-1 min-w-0">
@@ -551,20 +504,119 @@ Please confirm this order to proceed. Thank you for dining with Afoodable Bites!
           <button
             type="button"
             onClick={handlePlaceOrder}
-            className="w-full py-4 rounded-xl font-black text-lg transition-all duration-200 transform bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white hover:shadow-xl hover:scale-[1.01] active:scale-95 flex items-center justify-center space-x-2 shadow-lg"
+            disabled={isSubmitting}
+            className="w-full py-4 rounded-xl font-black text-lg transition-all duration-200 transform bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white hover:shadow-xl hover:scale-[1.01] active:scale-95 flex items-center justify-center space-x-2 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <span>Place Order via Messenger</span>
-            <span>💬</span>
+            {isSubmitting ? (
+              <span className="flex items-center space-x-2">
+                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Submitting Order...</span>
+              </span>
+            ) : (
+              <span className="flex items-center space-x-2">
+                <Flame className="w-5 h-5 animate-pulse" />
+                <span>Confirm & Place Order 🔥</span>
+              </span>
+            )}
           </button>
 
           <p className="text-xs text-zinc-500 text-center mt-3">
-            {isCod 
-              ? 'You will be redirected to Facebook Messenger with your order details pre-filled. Pay in cash when your food arrives!'
-              : 'You will be redirected to Facebook Messenger with your order summary pre-filled. Please attach your payment screenshot to confirm!'
-            }
+            Papasok agad ang order sa aming kitchen at admin dashboard. Makakatanggap kayo ng confirmation pop-up!
           </p>
         </div>
       </div>
+
+      {/* POP-UP MESSAGE: ORDER CONFIRMED MODAL */}
+      {showSuccessModal && placedOrder && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border-2 border-amber-400 text-center relative overflow-hidden animate-scale-up">
+            {/* Top decorative banner */}
+            <div className="absolute top-0 left-0 right-0 h-2.5 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
+
+            {/* Glowing Success Badge */}
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-1 shadow-xl flex items-center justify-center">
+              <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                <span className="text-4xl animate-bounce">🎉</span>
+              </div>
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight mb-1">
+              Order Confirmed!
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-600 font-medium mb-5">
+              Salamat, <strong className="text-zinc-900">{placedOrder.customerName}</strong>! Natanggap na ang iyong order sa aming kusina.
+            </p>
+
+            {/* Order Reference Box */}
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3.5 mb-5">
+              <span className="text-[11px] font-bold text-amber-800 uppercase tracking-widest block">
+                Order Reference No.
+              </span>
+              <div className="flex items-center justify-center space-x-2 mt-0.5">
+                <span className="text-2xl font-black text-amber-600 tracking-wider">
+                  #{placedOrder.id}
+                </span>
+                <button
+                  type="button"
+                  onClick={copyOrderCode}
+                  className="p-1 text-amber-700 hover:text-amber-900 transition"
+                  title="Copy reference number"
+                >
+                  {copiedCode ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+              {copiedCode && <span className="text-[10px] text-emerald-600 font-bold block">Copied to clipboard!</span>}
+            </div>
+
+            {/* Order Summary Snapshot */}
+            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3.5 text-left text-xs space-y-1.5 mb-5">
+              <div className="flex justify-between py-1 border-b border-zinc-200 font-bold text-zinc-800">
+                <span>Service Type:</span>
+                <span className="capitalize text-amber-600">{placedOrder.serviceType}</span>
+              </div>
+              {placedOrder.address && (
+                <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
+                  <span>Address:</span>
+                  <span className="font-medium text-right max-w-[200px] truncate">{placedOrder.address}</span>
+                </div>
+              )}
+              <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
+                <span>Payment:</span>
+                <span className="font-semibold">{placedOrder.paymentMethod}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
+                <span>Items:</span>
+                <span className="font-semibold">{placedOrder.items.reduce((sum, item) => sum + item.quantity, 0)} items</span>
+              </div>
+              <div className="flex justify-between pt-1 text-sm font-black text-zinc-900">
+                <span>Total Amount:</span>
+                <span className="text-amber-600">₱{placedOrder.total}</span>
+              </div>
+            </div>
+
+            {/* Cooking Notification */}
+            <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 border border-orange-200 rounded-xl p-3 mb-6">
+              <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-orange-950 mb-1">
+                <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
+                <span>Papasok na sa Kusina & Admin Dashboard!</span>
+              </div>
+              <p className="text-[11px] text-zinc-600">
+                ⏱️ Estimated Preparation: <strong>15 - 25 minutes</strong>. Laging luto at mainit! 🔥
+              </p>
+            </div>
+
+            {/* Back to Menu / Order More Button */}
+            <button
+              type="button"
+              onClick={handleFinishOrder}
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl font-black text-sm sm:text-base hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md flex items-center justify-center space-x-2"
+            >
+              <span>Back to Menu / Order More</span>
+              <span>🍲</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

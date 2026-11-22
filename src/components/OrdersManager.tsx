@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   ShoppingBag, 
@@ -12,18 +12,23 @@ import {
   Search, 
   Flame, 
   MessageCircle, 
-  ExternalLink,
   ChevronDown,
-  RotateCcw
+  RotateCcw,
+  Bell,
+  BellOff
 } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
 import { AdminOrder, OrderStatus } from '../types';
+import { 
+  isSoundAlertEnabled, 
+  setSoundAlertEnabled, 
+  testOrderChime, 
+  stopOrderRingtone 
+} from '../utils/audioAlert';
 
 interface OrdersManagerProps {
   onBack: () => void;
 }
-
-const FB_PAGE_MESSENGER_ID = '61595737646110';
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; bg: string; text: string; border: string; icon: any }> = {
   pending: {
@@ -60,6 +65,18 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
   const { orders, updateOrderStatus, deleteOrder, clearAllOrders } = useOrders();
   const [filterStatus, setFilterStatus] = useState<'all' | OrderStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [soundEnabled, setSoundEnabledState] = useState<boolean>(isSoundAlertEnabled());
+
+  const handleToggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabledState(next);
+    setSoundAlertEnabled(next);
+    if (next) {
+      testOrderChime();
+    } else {
+      stopOrderRingtone();
+    }
+  };
 
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
@@ -132,16 +149,28 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
             </div>
 
             <div className="flex items-center space-x-2">
-              <a
-                href={`https://m.me/${FB_PAGE_MESSENGER_ID}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow flex items-center space-x-1.5"
-                title="Open Facebook Page Messenger"
+              <button
+                type="button"
+                onClick={handleToggleSound}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 ${
+                  soundEnabled
+                    ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
+                    : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
+                }`}
+                title={soundEnabled ? 'Mute Ringtone' : 'Enable Ringtone'}
               >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Open FB Messenger</span>
-              </a>
+                {soundEnabled ? <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" /> : <BellOff className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{soundEnabled ? 'Ring Alerts: ON' : 'Ring: MUTED'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => testOrderChime()}
+                className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold rounded-xl border border-zinc-700 transition hidden sm:inline"
+                title="Test notification chime sound"
+              >
+                Test Sound 🔔
+              </button>
 
               {orders.length > 0 && (
                 <button
@@ -160,36 +189,49 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
-        {/* Messenger Page Connect Info Card */}
-        <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-blue-950/40 border border-zinc-800 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* Live Audio Alerts & Direct Dashboard Order Info Banner */}
+        <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-amber-950/40 border border-zinc-800 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0 text-blue-400">
-              <MessageCircle className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0 text-amber-400">
+              <Flame className="w-5 h-5 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="font-bold text-white text-sm">
-                  Connected Facebook Page Messenger
+                  Live Orders System (Auto-Ringing)
                 </h3>
-                <span className="text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
-                  ID: {FB_PAGE_MESSENGER_ID}
+                <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+                  <span>ONLINE & LISTENING</span>
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
-                When customers place an order, the details are recorded here and automatically forwarded to your Facebook Page Messenger chat.
+                Direktang pumapasok ang lahat ng order ng customer sa Admin Dashboard na may kasamang sound notification / ringing bell.
               </p>
             </div>
           </div>
 
-          <a
-            href={`https://m.me/${FB_PAGE_MESSENGER_ID}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold border border-zinc-700 transition flex items-center space-x-1.5 self-end sm:self-center flex-shrink-0"
-          >
-            <span>View Inbox</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          <div className="flex items-center space-x-2 self-end sm:self-center flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleToggleSound}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 ${
+                soundEnabled
+                  ? 'bg-amber-500 text-black border-amber-400 shadow-md'
+                  : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
+              }`}
+            >
+              {soundEnabled ? <Bell className="w-4 h-4 animate-bounce" /> : <BellOff className="w-4 h-4" />}
+              <span>{soundEnabled ? 'Sound: ON' : 'Sound: MUTED'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => testOrderChime()}
+              className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-bold border border-zinc-700 transition"
+            >
+              Test Sound 🔔
+            </button>
+          </div>
         </div>
 
         {/* Filter Tabs & Search Bar */}
@@ -249,77 +291,94 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
         {/* Orders List / Cards */}
         {filteredOrders.length === 0 ? (
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-12 text-center space-y-3">
-            <ShoppingBag className="w-12 h-12 text-zinc-700 mx-auto" />
-            <h3 className="text-white font-bold text-base">
-              {searchQuery ? 'No matching orders found' : 'No customer orders yet'}
-            </h3>
-            <p className="text-zinc-500 text-xs sm:text-sm max-w-sm mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center mx-auto text-3xl">
+              📦
+            </div>
+            <h3 className="text-lg font-bold text-white">No orders found</h3>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto">
               {searchQuery
-                ? 'Try a different customer name, phone number, or clear your search query.'
-                : 'When customers place orders from the website or tap to order, they will appear here in real time.'}
+                ? `No orders matching "${searchQuery}". Try a different keyword.`
+                : 'Customer orders will appear here in real-time with an audible ringing notification.'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="space-y-4">
             {filteredOrders.map((order) => {
-              const statusInfo = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-              const StatusIcon = statusInfo.icon;
-              const isCod = order.paymentMethod.toLowerCase().includes('cash');
+              const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+              const StatusIcon = statusCfg.icon;
 
               return (
                 <div
                   key={order.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4 hover:border-zinc-700 transition"
+                  className={`bg-zinc-900 border rounded-2xl p-5 sm:p-6 transition shadow-sm space-y-4 ${
+                    order.status === 'pending'
+                      ? 'border-amber-500/60 ring-1 ring-amber-500/20'
+                      : 'border-zinc-800'
+                  }`}
                 >
-                  {/* Top Bar: Order ID, Timestamp & Status Pill */}
-                  <div className="flex items-start justify-between gap-3 border-b border-zinc-800 pb-3">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-base font-black text-amber-400">
-                          #{order.id}
-                        </span>
-                        <span
-                          className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusInfo.bg} ${statusInfo.text} ${statusInfo.border}`}
-                        >
-                          <StatusIcon className="w-3 h-3" />
-                          <span>{statusInfo.label}</span>
-                        </span>
+                  {/* Order Card Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-800">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 font-black text-sm">
+                        #{order.id.replace('AB-', '')}
                       </div>
-                      <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center space-x-1">
-                        <Clock className="w-3 h-3 text-zinc-600" />
-                        <span>{formatTimestamp(order.createdAt)}</span>
-                      </p>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-bold text-white text-base">
+                            {order.customerName}
+                          </h3>
+                          <span className="text-xs font-mono text-zinc-400">
+                            ({order.id})
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-400">
+                          Placed: {formatTimestamp(order.createdAt)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* Quick Delete */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm(`Delete order record #${order.id}?`)) {
-                          deleteOrder(order.id);
-                        }
-                      }}
-                      className="p-1.5 text-zinc-600 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition"
-                      title="Delete order"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {/* Status Badge + Status Select */}
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center space-x-1.5 ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
+                      >
+                        <StatusIcon className="w-3.5 h-3.5" />
+                        <span>{statusCfg.label}</span>
+                      </div>
+
+                      <select
+                        value={order.status}
+                        onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                        className="bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                      >
+                        <option value="pending">Set: Pending</option>
+                        <option value="preparing">Set: Preparing</option>
+                        <option value="completed">Set: Completed</option>
+                        <option value="cancelled">Set: Cancelled</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Delete order ${order.id}?`)) {
+                            deleteOrder(order.id);
+                          }
+                        }}
+                        className="p-1.5 text-zinc-500 hover:text-red-400 transition"
+                        title="Delete order"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Customer Information */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
+                  {/* Customer Details Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-zinc-950/60 rounded-xl p-3.5 border border-zinc-800/80 text-xs">
                     <div>
-                      <span className="text-zinc-500 block">Customer</span>
-                      <span className="font-bold text-white text-sm block truncate">
-                        {order.customerName}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="text-zinc-500 block">Contact</span>
+                      <span className="text-zinc-500 block mb-0.5">Contact</span>
                       <a
                         href={`tel:${order.contactNumber}`}
-                        className="font-mono font-bold text-amber-400 hover:underline flex items-center space-x-1"
+                        className="font-bold text-amber-400 hover:underline flex items-center space-x-1"
                       >
                         <Phone className="w-3 h-3" />
                         <span>{order.contactNumber}</span>
@@ -327,107 +386,88 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
                     </div>
 
                     <div>
-                      <span className="text-zinc-500 block">Service Type</span>
-                      <span className="font-bold text-zinc-200 capitalize">
+                      <span className="text-zinc-500 block mb-0.5">Service Type</span>
+                      <span className="font-bold text-white capitalize">
                         {order.serviceType === 'dine-in' ? '🍽️ Dine In' : order.serviceType === 'pickup' ? '🥡 Pickup' : '🛵 Delivery'}
                       </span>
                       {order.pickupTime && (
-                        <span className="text-zinc-400 block text-[11px]">
-                          Time: {order.pickupTime}
+                        <span className="text-[11px] text-zinc-400 block">
+                          ETA: {order.pickupTime}
                         </span>
                       )}
                     </div>
 
                     <div>
-                      <span className="text-zinc-500 block">Payment Method</span>
-                      <span className={`font-bold inline-block ${isCod ? 'text-emerald-400' : 'text-blue-400'}`}>
+                      <span className="text-zinc-500 block mb-0.5">Payment Method</span>
+                      <span className="font-bold text-white">
                         {order.paymentMethod}
                       </span>
                     </div>
 
+                    <div>
+                      <span className="text-zinc-500 block mb-0.5">Total Amount</span>
+                      <span className="text-base font-black text-amber-400">
+                        ₱{order.total}
+                      </span>
+                    </div>
+
                     {order.address && (
-                      <div className="sm:col-span-2 pt-1 border-t border-zinc-800/60">
-                        <span className="text-zinc-500 flex items-center space-x-1">
-                          <MapPin className="w-3 h-3" />
-                          <span>Delivery Address:</span>
-                        </span>
-                        <p className="text-zinc-300 font-medium mt-0.5">
-                          {order.address}
-                          {order.landmark && ` (Landmark: ${order.landmark})`}
+                      <div className="sm:col-span-2 md:col-span-4 pt-1 border-t border-zinc-800/60">
+                        <span className="text-zinc-500 block mb-0.5">Delivery Address</span>
+                        <p className="text-zinc-300 font-medium flex items-start space-x-1">
+                          <MapPin className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                          <span>
+                            {order.address}
+                            {order.landmark && <span className="text-zinc-400"> (Landmark: {order.landmark})</span>}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+
+                    {order.notes && (
+                      <div className="sm:col-span-2 md:col-span-4 pt-1 border-t border-zinc-800/60">
+                        <span className="text-zinc-500 block mb-0.5">Customer Notes</span>
+                        <p className="text-amber-200/90 font-medium italic">
+                          "{order.notes}"
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {/* Order Items Breakdown */}
-                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                  {/* Ordered Items Breakdown */}
+                  <div className="space-y-2">
                     <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
-                      Ordered Items ({order.items.length})
+                      Ordered Items ({order.items.reduce((acc, i) => acc + i.quantity, 0)})
                     </span>
-                    <div className="divide-y divide-zinc-800/60">
+                    <div className="divide-y divide-zinc-800/60 bg-zinc-950/40 rounded-xl px-4 py-1 border border-zinc-800/60">
                       {order.items.map((item, idx) => (
-                        <div key={idx} className="py-1.5 flex items-center justify-between text-xs">
-                          <div className="min-w-0 flex-1 pr-2">
-                            <p className="font-bold text-white truncate">
-                              {item.name}
-                              <span className="text-amber-400 ml-1.5 font-bold">
-                                x{item.quantity}
-                              </span>
-                            </p>
+                        <div key={idx} className="py-2.5 flex items-start justify-between text-xs">
+                          <div>
+                            <div className="font-bold text-white flex items-center space-x-1.5">
+                              <span>{item.quantity}x</span>
+                              <span>{item.name}</span>
+                            </div>
+                            {item.selectedVariation && (
+                              <p className="text-[11px] text-zinc-400">
+                                Variation: {item.selectedVariation.name}
+                              </p>
+                            )}
+                            {item.selectedVariations && item.selectedVariations.length > 0 && (
+                              <p className="text-[11px] text-zinc-400">
+                                Flavors: {item.selectedVariations.map(v => v.name).join(' + ')}
+                              </p>
+                            )}
                             {item.selectedAddOns && item.selectedAddOns.length > 0 && (
-                              <p className="text-[11px] text-zinc-500 truncate">
-                                + {item.selectedAddOns.map(a => a.name).join(', ')}
+                              <p className="text-[11px] text-zinc-400">
+                                Add-ons: {item.selectedAddOns.map(a => `${a.name}${a.quantity && a.quantity > 1 ? ` x${a.quantity}` : ''}`).join(', ')}
                               </p>
                             )}
                           </div>
-                          <span className="font-bold text-zinc-300">
+                          <span className="font-bold text-amber-400">
                             ₱{item.totalPrice * item.quantity}
                           </span>
                         </div>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Special Notes */}
-                  {order.notes && (
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 text-xs text-amber-300">
-                      <strong className="block text-[11px] text-amber-400 uppercase">Notes:</strong>
-                      <span>{order.notes}</span>
-                    </div>
-                  )}
-
-                  {/* Total & Status Actions */}
-                  <div className="pt-3 border-t border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-zinc-400">Total:</span>
-                      <span className="text-xl font-black text-amber-400">
-                        ₱{order.total}
-                      </span>
-                    </div>
-
-                    {/* Status Change Selector */}
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-xs text-zinc-500 hidden sm:inline">Status:</span>
-                      <select
-                        value={order.status}
-                        onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                        className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 text-xs font-bold rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="pending">🟡 Pending</option>
-                        <option value="preparing">🔵 Preparing</option>
-                        <option value="completed">🟢 Completed</option>
-                        <option value="cancelled">🔴 Cancelled</option>
-                      </select>
-
-                      <a
-                        href={`https://m.me/${FB_PAGE_MESSENGER_ID}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-xl transition border border-blue-500/30"
-                        title="Chat customer on FB Messenger"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </a>
                     </div>
                   </div>
                 </div>
