@@ -28,6 +28,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
   const [placedOrder, setPlacedOrder] = useState<AdminOrder | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [countdown, setCountdown] = useState(4);
 
   // Selected payment method ID
   const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
@@ -88,14 +89,32 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
     }
   };
 
-  const handleFinishOrder = () => {
+  const handleFinishOrder = React.useCallback(() => {
     setShowSuccessModal(false);
     if (onOrderSuccess) {
       onOrderSuccess();
     } else {
       onBack();
     }
-  };
+  }, [onOrderSuccess, onBack]);
+
+  // Automatic redirect countdown to main page when order succeeds
+  React.useEffect(() => {
+    if (!showSuccessModal) return;
+    setCountdown(4);
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleFinishOrder();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [showSuccessModal, handleFinishOrder]);
 
   const isDetailsValid = Boolean(
     customerName.trim() &&
@@ -564,7 +583,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
             </div>
 
             {/* Cooking Notification */}
-            <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 border border-orange-200 rounded-xl p-3 mb-6">
+            <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 border border-orange-200 rounded-xl p-3 mb-4">
               <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-orange-950 mb-1">
                 <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
                 <span>Papasok na sa Kusina & Admin Dashboard!</span>
@@ -574,14 +593,20 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
               </p>
             </div>
 
-            {/* Back to Menu / Order More Button */}
+            {/* Automatic Return Countdown */}
+            <div className="flex items-center justify-center space-x-2 text-xs text-amber-900 bg-amber-50 border border-amber-200/80 rounded-xl py-2 px-3 mb-4">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block" />
+              <span>Awtomatikong babalik sa main sa loob ng <strong>{countdown}s</strong>...</span>
+            </div>
+
+            {/* Back to Main Button */}
             <button
               type="button"
               onClick={handleFinishOrder}
               className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl font-black text-sm sm:text-base hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md flex items-center justify-center space-x-2"
             >
-              <span>Back to Menu / Order More</span>
-              <span>🍲</span>
+              <span>Bumalik sa Main Page</span>
+              <span>🏠</span>
             </button>
           </div>
         </div>

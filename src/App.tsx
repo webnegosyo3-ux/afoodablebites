@@ -96,7 +96,7 @@ function MainApp() {
             onBack={() => handleViewChange('cart')}
             onOrderSuccess={() => {
               cart.clearCart();
-              handleViewChange('menu');
+              handleViewChange('welcome');
             }}
           />
         </div>
