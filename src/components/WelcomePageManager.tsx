@@ -392,6 +392,27 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
             </button>
           </div>
 
+          {/* Slideshow Image Size Guidelines */}
+          <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 m-5 mb-2 flex items-start space-x-3.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-base flex-shrink-0 shadow-sm">
+              📐
+            </div>
+            <div className="text-xs">
+              <h4 className="font-bold text-amber-950 text-sm flex items-center space-x-2">
+                <span>Required / Recommended Slideshow Image Size</span>
+                <span className="bg-amber-200/80 text-amber-900 text-[10px] px-2 py-0.5 rounded-full font-black">
+                  1200 × 800 PX
+                </span>
+              </h4>
+              <p className="text-zinc-700 mt-1">
+                <strong>Resolution:</strong> 1200 × 800 px (o 1920 × 1080 px para sa Full HD). Minimum: 800 × 600 px.
+              </p>
+              <p className="text-zinc-600 mt-0.5">
+                <strong>Aspect Ratio:</strong> 16:9 o 4:3 (Landscape / Pahalang). Siguraduhing nasa gitna ang focus ng pagkain para maganda ang display sa mobile at desktop.
+              </p>
+            </div>
+          </div>
+
           {/* Slides List */}
           <div className="divide-y divide-gray-100">
             {config.slides.map((slide, index) => (
@@ -594,9 +615,20 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
 
               {/* Image Input & Upload */}
               <div className="space-y-3 pt-1">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Promo Image *
-                </label>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Promo Image *
+                  </label>
+                  <span className="text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full inline-flex items-center space-x-1">
+                    <span>📐 Required Size:</span>
+                    <strong>1200 × 800 px (16:9 / 4:3)</strong>
+                  </span>
+                </div>
+
+                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-[11px] text-zinc-600 space-y-0.5">
+                  <p><strong>Recommended Resolution:</strong> 1200 × 800 px o 1920 × 1080 px (Landscape / Pahalang).</p>
+                  <p><strong>Minimum Resolution:</strong> 800 × 600 px • <strong>Formats:</strong> JPG, PNG, WebP (Max 5MB)</p>
+                </div>
 
                 {/* Upload File Button */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
