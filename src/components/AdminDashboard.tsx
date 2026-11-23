@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp,
   Package, Users, Lock, FolderOpen, CreditCard, Settings, Sparkles, Flame,
-  ShoppingBag, Bell, BellOff
+  ShoppingBag, Bell, BellOff, BarChart3
 } from 'lucide-react';
 import { MenuItem, Variation, AddOn, AdminOrder } from '../types';
 import { addOnCategories } from '../data/menuData';
@@ -12,7 +12,6 @@ import { useOrders } from '../hooks/useOrders';
 import {
   isSoundAlertEnabled,
   setSoundAlertEnabled,
-  testOrderChime,
   playOrderRingtone,
   stopOrderRingtone
 } from '../utils/audioAlert';
@@ -22,6 +21,9 @@ import PaymentMethodManager from './PaymentMethodManager';
 import SiteSettingsManager from './SiteSettingsManager';
 import WelcomePageManager from './WelcomePageManager';
 import OrdersManager from './OrdersManager';
+import AnalyticsManager from './AnalyticsManager';
+import CustomerManager from './CustomerManager';
+import UpsellManager from './UpsellManager';
 
 // ── Shared Topbar ──────────────────────────────────────────────────────────────
 const AdminTopbar: React.FC<{
@@ -96,7 +98,7 @@ const AdminDashboard: React.FC = () => {
   const { categories } = useCategories();
   const { orders } = useOrders();
   const [currentView, setCurrentView] = useState<
-    'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'settings' | 'welcome' | 'orders'
+    'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'settings' | 'welcome' | 'orders' | 'analytics' | 'customers' | 'upsells'
   >('dashboard');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -259,6 +261,8 @@ const AdminDashboard: React.FC = () => {
   const totalItems = menuItems.length;
   const popularItems = menuItems.filter(i => i.popular).length;
   const availableItems = menuItems.filter(i => i.available).length;
+  const totalRevenue = orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const totalCustomersCount = new Set(orders.map(o => (o.contactNumber || '').replace(/\D/g, '') || o.customerName)).size;
   const categoryCounts = categories.map(cat => ({ ...cat, count: menuItems.filter(i => i.category === cat.id).length }));
 
   // ── LOGIN SCREEN ─────────────────────────────────────────────────────────────
@@ -744,6 +748,9 @@ const AdminDashboard: React.FC = () => {
 
   // ── SUBVIEWS (delegate) ──────────────────────────────────────────────────────
   if (currentView === 'orders') return <>{floatingAlertBanner}<OrdersManager onBack={() => setCurrentView('dashboard')} /></>;
+  if (currentView === 'analytics') return <>{floatingAlertBanner}<AnalyticsManager onBack={() => setCurrentView('dashboard')} /></>;
+  if (currentView === 'customers') return <>{floatingAlertBanner}<CustomerManager onBack={() => setCurrentView('dashboard')} /></>;
+  if (currentView === 'upsells') return <>{floatingAlertBanner}<UpsellManager onBack={() => setCurrentView('dashboard')} /></>;
   if (currentView === 'categories') return <>{floatingAlertBanner}<CategoryManager onBack={() => setCurrentView('dashboard')} /></>;
   if (currentView === 'payments') return <>{floatingAlertBanner}<PaymentMethodManager onBack={() => setCurrentView('dashboard')} /></>;
   if (currentView === 'welcome') return <>{floatingAlertBanner}<WelcomePageManager onBack={() => setCurrentView('dashboard')} /></>;
@@ -796,15 +803,6 @@ const AdminDashboard: React.FC = () => {
                   {soundEnabled ? <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" /> : <BellOff className="w-3.5 h-3.5" />}
                   <span>{soundEnabled ? 'Ring: ON' : 'Ring: MUTED'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => testOrderChime()}
-                  className="text-[11px] text-zinc-400 hover:text-amber-400 underline font-medium hidden sm:inline"
-                  title="Test notification ring chime"
-                >
-                  Test Sound 🔔
-                </button>
-                <a href="/" className="text-xs text-zinc-400 hover:text-amber-400 transition font-medium">View Site ↗</a>
                 <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-red-400 transition font-medium">Logout</button>
               </div>
             </div>
@@ -825,9 +823,24 @@ const AdminDashboard: React.FC = () => {
                 ? `${orders.filter(o => o.status === 'pending').length} New` 
                 : undefined
             },
-            { label: 'Total Items', value: totalItems, icon: Package, color: 'from-orange-500 to-red-500' },
-            { label: 'Available Items', value: availableItems, icon: TrendingUp, color: 'from-emerald-500 to-green-600' },
-            { label: 'Popular Dishes', value: popularItems, icon: Coffee, color: 'from-blue-500 to-indigo-600' },
+            { 
+              label: 'Total Revenue', 
+              value: `₱${totalRevenue.toLocaleString()}`, 
+              icon: TrendingUp, 
+              color: 'from-emerald-500 to-green-600' 
+            },
+            { 
+              label: 'Unique Customers', 
+              value: totalCustomersCount, 
+              icon: Users, 
+              color: 'from-blue-500 to-indigo-600' 
+            },
+            { 
+              label: 'Menu Items', 
+              value: totalItems, 
+              icon: Package, 
+              color: 'from-orange-500 to-red-500' 
+            },
           ].map(({ label, value, icon: Icon, color, badge }) => (
             <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex items-center space-x-4">
               <div className={`bg-gradient-to-br ${color} p-3 rounded-xl shadow-lg flex-shrink-0`}>
@@ -865,6 +878,26 @@ const AdminDashboard: React.FC = () => {
                   badge: orders.filter(o => o.status === 'pending').length > 0 
                     ? `${orders.filter(o => o.status === 'pending').length} Pending` 
                     : `${orders.length} Total`
+                },
+                { 
+                  label: 'Sales & Business Analytics', 
+                  icon: BarChart3, 
+                  action: () => setCurrentView('analytics'), 
+                  highlight: true,
+                  badge: 'Reports'
+                },
+                { 
+                  label: 'Customer Directory & Records', 
+                  icon: Users, 
+                  action: () => setCurrentView('customers'), 
+                  highlight: false,
+                  badge: `${totalCustomersCount} Contacts`
+                },
+                { 
+                  label: 'Upsell & Cross-sell Offers', 
+                  icon: Flame, 
+                  action: () => setCurrentView('upsells'), 
+                  highlight: false 
                 },
                 { label: 'Add New Menu Item', icon: Plus, action: handleAddItem, highlight: false },
                 { label: 'Manage Menu Items', icon: Package, action: () => setCurrentView('items'), highlight: false },

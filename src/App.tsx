@@ -83,6 +83,7 @@ function MainApp() {
             getTotalPrice={cart.getTotalPrice}
             onContinueShopping={() => handleViewChange('menu')}
             onCheckout={() => handleViewChange('checkout')}
+            addToCart={cart.addToCart}
           />
         </div>
       )}

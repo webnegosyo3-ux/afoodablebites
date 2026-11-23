@@ -163,15 +163,6 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
                 <span className="hidden sm:inline">{soundEnabled ? 'Ring Alerts: ON' : 'Ring: MUTED'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => testOrderChime()}
-                className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold rounded-xl border border-zinc-700 transition hidden sm:inline"
-                title="Test notification chime sound"
-              >
-                Test Sound 🔔
-              </button>
-
               {orders.length > 0 && (
                 <button
                   type="button"
@@ -223,13 +214,6 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
             >
               {soundEnabled ? <Bell className="w-4 h-4 animate-bounce" /> : <BellOff className="w-4 h-4" />}
               <span>{soundEnabled ? 'Sound: ON' : 'Sound: MUTED'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => testOrderChime()}
-              className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-bold border border-zinc-700 transition"
-            >
-              Test Sound 🔔
             </button>
           </div>
         </div>

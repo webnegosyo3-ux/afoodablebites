@@ -1,6 +1,7 @@
 import React from 'react';
-import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Flame, Sparkles } from 'lucide-react';
-import { CartItem } from '../types';
+import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Flame, Sparkles, Check } from 'lucide-react';
+import { CartItem, UpsellItem } from '../types';
+import { useUpsells } from '../hooks/useUpsells';
 
 interface CartProps {
   cartItems: CartItem[];
@@ -10,6 +11,7 @@ interface CartProps {
   getTotalPrice: () => number;
   onContinueShopping: () => void;
   onCheckout: () => void;
+  addToCart?: (item: any, quantity?: number) => void;
 }
 
 const Cart: React.FC<CartProps> = ({
@@ -19,9 +21,25 @@ const Cart: React.FC<CartProps> = ({
   clearCart,
   getTotalPrice,
   onContinueShopping,
-  onCheckout
+  onCheckout,
+  addToCart
 }) => {
+  const { activeUpsells } = useUpsells();
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  const handleAddUpsell = (upsell: UpsellItem) => {
+    if (!addToCart) return;
+    const itemToAdd = {
+      id: upsell.id,
+      name: upsell.name,
+      description: upsell.description,
+      basePrice: upsell.price,
+      category: upsell.category || 'extras',
+      image: upsell.image,
+      available: true
+    };
+    addToCart(itemToAdd as any, 1);
+  };
 
   if (cartItems.length === 0) {
     return (
@@ -195,6 +213,81 @@ const Cart: React.FC<CartProps> = ({
           );
         })}
       </div>
+
+      {/* UPSELL & ADD-ON RECOMMENDATIONS SECTION */}
+      {activeUpsells.length > 0 && addToCart && (
+        <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border-2 border-amber-300/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 mb-6 shadow-sm">
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">🔥</span>
+              <h3 className="font-black text-sm sm:text-base text-zinc-900 tracking-tight">
+                Complete Your Meal! (Add Drinks & Extras)
+              </h3>
+            </div>
+            <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+              Madalas isabay
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {activeUpsells.map((upsell) => {
+              const inCart = cartItems.find(c => c.name.toLowerCase() === upsell.name.toLowerCase() || c.id.startsWith(upsell.id));
+
+              return (
+                <div
+                  key={upsell.id}
+                  className="bg-white border border-amber-200/80 rounded-xl p-3 flex items-center justify-between shadow-sm hover:shadow-md transition-all group"
+                >
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-100 flex-shrink-0 border border-zinc-200 flex items-center justify-center">
+                      {upsell.image ? (
+                        <img
+                          src={upsell.image}
+                          alt={upsell.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          onError={e => { e.currentTarget.src = '/images/afodable-bites-logo.jpg'; }}
+                        />
+                      ) : (
+                        <span className="text-lg">🍚</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-xs sm:text-sm text-zinc-900 truncate">
+                        {upsell.name}
+                      </h4>
+                      <p className="text-xs font-black text-amber-600">
+                        ₱{upsell.price}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddUpsell(upsell)}
+                    className={`ml-2 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center space-x-1 transition active:scale-90 flex-shrink-0 ${
+                      inCart
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                        : 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
+                    }`}
+                  >
+                    {inCart ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Added ({inCart.quantity})</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Checkout Summary Card */}
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm p-4 sm:p-6 border border-zinc-200 space-y-4">

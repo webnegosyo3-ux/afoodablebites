@@ -119,3 +119,16 @@ export interface AdminOrder {
   updatedAt: string;
 }
 
+// Upsell Items for Ordering & Admin Management
+export interface UpsellItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image?: string;
+  category?: string;
+  active: boolean;
+  sortOrder: number;
+}
+
+
