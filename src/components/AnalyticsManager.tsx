@@ -15,7 +15,8 @@ import {
   Truck,
   Coffee,
   PieChart,
-  BarChart3
+  BarChart3,
+  RefreshCw
 } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
 import { useMenu } from '../hooks/useMenu';
@@ -28,9 +29,21 @@ interface AnalyticsManagerProps {
 type TimeRange = 'all' | 'today' | 'week' | 'month';
 
 const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ onBack }) => {
-  const { orders } = useOrders();
+  const { orders, refetch, loading } = useOrders();
   const { menuItems } = useMenu();
   const [timeRange, setTimeRange] = useState<TimeRange>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (refetch) {
+        await refetch();
+      }
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   // Filter orders by time range
   const filteredOrders = useMemo(() => {
@@ -166,29 +179,43 @@ const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ onBack }) => {
               </div>
             </div>
 
-            {/* Time Range Filter Pills */}
-            <div className="flex items-center space-x-1 bg-zinc-800 p-1 rounded-xl border border-zinc-700">
-              {(
-                [
-                  { id: 'all', label: 'All Time' },
-                  { id: 'month', label: 'This Month' },
-                  { id: 'week', label: 'This Week' },
-                  { id: 'today', label: 'Today' }
-                ] as const
-              ).map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTimeRange(t.id)}
-                  className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
-                    timeRange === t.id
-                      ? 'bg-amber-500 text-black shadow'
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+            <div className="flex items-center space-x-2">
+              {/* Refresh Button */}
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing || loading}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs font-bold border border-zinc-700 transition disabled:opacity-60 shadow-sm active:scale-95"
+                title="Refresh Analytics Data"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isRefreshing || loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+
+              {/* Time Range Filter Pills */}
+              <div className="flex items-center space-x-1 bg-zinc-800 p-1 rounded-xl border border-zinc-700">
+                {(
+                  [
+                    { id: 'all', label: 'All Time' },
+                    { id: 'month', label: 'This Month' },
+                    { id: 'week', label: 'This Week' },
+                    { id: 'today', label: 'Today' }
+                  ] as const
+                ).map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTimeRange(t.id)}
+                    className={`px-2.5 sm:px-3 py-1 text-xs font-bold rounded-lg transition ${
+                      timeRange === t.id
+                        ? 'bg-amber-500 text-black shadow'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

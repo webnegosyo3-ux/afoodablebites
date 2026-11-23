@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Check, QrCode } from 'lucide-react';
+import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Check, QrCode, Eye, X } from 'lucide-react';
 import { CartItem, ServiceType, AdminOrder } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useOrders } from '../hooks/useOrders';
@@ -51,6 +51,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
   // Placed Order state & Modal Pop-up
   const [placedOrder, setPlacedOrder] = useState<AdminOrder | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(4);
   const [copiedAccount, setCopiedAccount] = useState(false);
@@ -439,12 +440,16 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
           ) : (
             <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-blue-400 shadow-md space-y-4">
               {/* QR Code Container */}
-              <div className="flex flex-col items-center justify-center">
-                <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-2xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-2.5 flex items-center justify-center">
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div 
+                  onClick={() => setShowQrModal(true)}
+                  className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-2xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-2.5 flex items-center justify-center cursor-pointer group"
+                  title="Click to view full QR Code"
+                >
                   <img
                     src={(currentMethod?.qr_code_url && currentMethod.qr_code_url.trim()) || '/images/payment-qr/gcash-qr-code.jpg'}
                     alt={`${currentMethod?.name || 'Payment'} QR Code`}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
                     onError={(e) => {
                       if (e.currentTarget.src.includes('/images/payment-qr/gcash-qr-code.jpg')) {
                         e.currentTarget.src = '/gcash-qr-code.jpg';
@@ -453,7 +458,22 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                       }
                     }}
                   />
+                  <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="bg-black/80 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center space-x-1 shadow">
+                      <Eye className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Click to Enlarge</span>
+                    </span>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(true)}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1 py-1 px-3 rounded-lg hover:bg-blue-50 transition"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>View Full QR Code 🔍</span>
+                </button>
               </div>
 
               {/* Account Details with Copy Button */}
@@ -519,9 +539,21 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                   <span className="text-zinc-500">Pickup Time:</span> {pickupTime === 'custom' ? customTime : `${pickupTime} minutes`}
                 </p>
               )}
-              <p className="text-zinc-700 pt-1 border-t border-amber-200/50 mt-1">
-                <span className="text-zinc-500">Payment:</span> <strong className="text-zinc-900">{currentMethod?.name}</strong>
-              </p>
+              <div className="flex items-center justify-between pt-1 border-t border-amber-200/50 mt-1">
+                <p className="text-zinc-700">
+                  <span className="text-zinc-500">Payment:</span> <strong className="text-zinc-900">{currentMethod?.name}</strong>
+                </p>
+                {!isCod && (
+                  <button
+                    type="button"
+                    onClick={() => setShowQrModal(true)}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-lg flex items-center space-x-1 transition shadow-sm"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>View QR Code</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
@@ -607,9 +639,21 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                   <span className="font-medium text-right max-w-[200px] truncate">{placedOrder.address}</span>
                 </div>
               )}
-              <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
+              <div className="flex justify-between items-center py-1 border-b border-zinc-200 text-zinc-700">
                 <span>Payment:</span>
-                <span className="font-semibold">{placedOrder.paymentMethod}</span>
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">{placedOrder.paymentMethod}</span>
+                  {!isCod && (
+                    <button
+                      type="button"
+                      onClick={() => setShowQrModal(true)}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg flex items-center space-x-1 transition"
+                    >
+                      <QrCode className="w-3 h-3" />
+                      <span>View QR</span>
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
                 <span>Items:</span>
@@ -620,6 +664,18 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                 <span className="text-amber-600">₱{placedOrder.total}</span>
               </div>
             </div>
+
+            {/* View QR Code button in Confirmation Modal */}
+            {!isCod && (
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                className="w-full py-2.5 mb-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 transition shadow-sm"
+              >
+                <QrCode className="w-4 h-4 text-blue-600" />
+                <span>View QR Code & Account Details</span>
+              </button>
+            )}
 
             {/* Cooking Notification */}
             <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 border border-orange-200 rounded-xl p-3 mb-4">
@@ -646,6 +702,95 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
             >
               <span>Bumalik sa Main Page</span>
               <span>🏠</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* POP-UP MODAL: ENLARGED VIEW QR CODE */}
+      {showQrModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-sm sm:max-w-md w-full p-6 sm:p-7 shadow-2xl border-2 border-blue-400 text-center relative overflow-hidden animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">
+              <div className="flex items-center space-x-2 text-left">
+                <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-zinc-900 text-base leading-tight">
+                    {currentMethod?.name || 'Payment QR Code'}
+                  </h3>
+                  <p className="text-xs text-zinc-500">Scan to pay with GCash / E-Wallet</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                className="p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Large High-Contrast QR */}
+            <div className="w-64 h-64 sm:w-72 sm:h-72 mx-auto rounded-2xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-2.5 flex items-center justify-center mb-4">
+              <img
+                src={(currentMethod?.qr_code_url && currentMethod.qr_code_url.trim()) || '/images/payment-qr/gcash-qr-code.jpg'}
+                alt={`${currentMethod?.name || 'Payment'} QR Code`}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  if (e.currentTarget.src.includes('/images/payment-qr/gcash-qr-code.jpg')) {
+                    e.currentTarget.src = '/gcash-qr-code.jpg';
+                  } else {
+                    e.currentTarget.src = '/images/payment-qr/gcash-qr-code.jpg';
+                  }
+                }}
+              />
+            </div>
+
+            {/* Account Details Box */}
+            <div className="bg-zinc-50 rounded-xl p-3.5 space-y-2 text-xs sm:text-sm border border-zinc-200 text-left mb-4">
+              <div className="flex justify-between items-center py-1 border-b border-zinc-200">
+                <span className="text-zinc-500 font-medium">Account Number:</span>
+                <div className="flex items-center space-x-2">
+                  <span className="font-mono font-black text-zinc-900 text-sm sm:text-base">
+                    {currentMethod?.account_number || '0905 293 1408'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copyAccountNumber(currentMethod?.account_number || '0905 293 1408')}
+                    className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition"
+                    title="Copy Account Number"
+                  >
+                    {copiedAccount ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              {copiedAccount && (
+                <p className="text-[11px] text-emerald-600 font-bold text-right -mt-1">
+                  Copied to clipboard!
+                </p>
+              )}
+              <div className="flex justify-between items-center py-1 border-b border-zinc-200">
+                <span className="text-zinc-500 font-medium">Account Name:</span>
+                <span className="font-bold text-zinc-900">
+                  {currentMethod?.account_name || 'Afoodable Bites'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-zinc-500 font-medium">Amount to Pay:</span>
+                <span className="font-black text-amber-600 text-sm sm:text-base">
+                  ₱{totalPrice}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowQrModal(false)}
+              className="w-full py-3 bg-zinc-900 hover:bg-black text-white rounded-xl font-bold text-sm transition"
+            >
+              Done / Close
             </button>
           </div>
         </div>
