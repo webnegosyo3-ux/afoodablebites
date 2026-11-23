@@ -400,64 +400,26 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
 
           {/* Selected Method Display Details */}
           {isCod ? (
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-300 space-y-4 shadow-inner">
+            <div className="bg-amber-50/80 rounded-2xl p-4 border border-amber-200 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center text-2xl shadow-md">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xl shadow-sm">
                   💵
                 </div>
                 <div>
-                  <h3 className="font-black text-amber-950 text-base">Cash on Delivery / Pay at Counter</h3>
-                  <p className="text-xs text-amber-800 font-semibold">No upfront payment required</p>
+                  <h3 className="font-black text-amber-950 text-sm">Cash on Delivery (COD)</h3>
+                  <p className="text-xs text-amber-800">Magbayad pagkatanggap ng inyong order</p>
                 </div>
               </div>
-
-              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-amber-200 text-xs sm:text-sm text-zinc-700 space-y-2">
-                <p className="font-bold text-zinc-900">✅ How COD Works:</p>
-                <ul className="space-y-1 list-disc list-inside text-zinc-600">
-                  <li>Your order goes directly to our kitchen & admin dashboard.</li>
-                  <li>We immediately begin cooking your meal fresh and hot!</li>
-                  <li>Please prepare exact cash amount of <strong className="text-amber-700 font-black">₱{totalPrice}</strong> upon pickup or delivery.</li>
-                </ul>
-              </div>
-
-              {/* Quick switch to GCash QR */}
-              <button
-                type="button"
-                onClick={() => {
-                  const gcash = activePaymentMethods.find(m => m.id === 'payment-gcash' || m.name.toLowerCase().includes('gcash'));
-                  if (gcash) setSelectedPaymentId(gcash.id);
-                }}
-                className="w-full py-2.5 px-4 bg-white hover:bg-blue-50 text-blue-700 border-2 border-blue-300 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm"
-              >
-                <span>📱 Gusto mag-bayad gamit ang GCash QR Code? I-click dito</span>
-              </button>
+              <span className="font-black text-amber-700 text-base">₱{totalPrice}</span>
             </div>
           ) : (
-            <div className="bg-gradient-to-b from-blue-50/80 to-white rounded-2xl p-5 border-2 border-blue-400 shadow-md space-y-4">
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-blue-100">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-md">
-                    GC
-                  </div>
-                  <div>
-                    <h3 className="font-black text-zinc-900 text-base leading-tight">
-                      GCash Payment QR Code
-                    </h3>
-                    <p className="text-[11px] text-blue-600 font-bold">Official Store Payment QR</p>
-                  </div>
-                </div>
-                <span className="text-xs font-black bg-blue-600 text-white px-3 py-1 rounded-full shadow-sm">
-                  ₱{totalPrice}
-                </span>
-              </div>
-
+            <div className="bg-white rounded-2xl p-5 border-2 border-blue-400 shadow-md space-y-4">
               {/* QR Code Container */}
-              <div className="bg-white rounded-2xl p-4 border border-blue-100 shadow-inner flex flex-col items-center justify-center">
+              <div className="flex flex-col items-center justify-center">
                 <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-2xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-3 flex items-center justify-center">
                   <img
                     src={currentMethod?.qr_code_url || '/images/payment-qr/gcash-qr-code.jpg'}
-                    alt="GCash Payment QR Code"
+                    alt={`${currentMethod?.name || 'Payment'} QR Code`}
                     className="w-full h-full object-contain"
                     onError={(e) => {
                       if (e.currentTarget.src.includes('/images/payment-qr/gcash-qr-code.jpg')) {
@@ -468,22 +430,12 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                     }}
                   />
                 </div>
-
-                <div className="text-center mt-3 space-y-1">
-                  <p className="text-xs sm:text-sm font-black text-blue-900 flex items-center justify-center space-x-1.5">
-                    <span>📱</span>
-                    <span>Scan with your GCash App to Pay ₱{totalPrice}</span>
-                  </p>
-                  <p className="text-[11px] text-zinc-500">
-                    I-scan gamit ang GCash camera o i-save / i-screenshot ang QR code
-                  </p>
-                </div>
               </div>
 
               {/* Account Details with Copy Button */}
-              <div className="bg-white rounded-xl p-3.5 space-y-2 text-xs sm:text-sm border border-blue-100 shadow-sm">
-                <div className="flex justify-between items-center py-1.5 border-b border-zinc-100">
-                  <span className="text-zinc-500 font-medium">GCash Number:</span>
+              <div className="bg-zinc-50 rounded-xl p-3.5 space-y-2 text-xs sm:text-sm border border-zinc-200">
+                <div className="flex justify-between items-center py-1 border-b border-zinc-200">
+                  <span className="text-zinc-500 font-medium">Account Number:</span>
                   <div className="flex items-center space-x-2">
                     <span className="font-mono font-black text-zinc-900 text-sm sm:text-base">
                       {currentMethod?.account_number || '0905 293 1408'}
@@ -492,7 +444,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                       type="button"
                       onClick={() => copyAccountNumber(currentMethod?.account_number || '0905 293 1408')}
                       className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition"
-                      title="Copy GCash Number"
+                      title="Copy Account Number"
                     >
                       {copiedAccount ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                     </button>
@@ -500,7 +452,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                 </div>
                 {copiedAccount && (
                   <p className="text-[11px] text-emerald-600 font-bold text-right -mt-1">
-                    Copied GCash number!
+                    Copied to clipboard!
                   </p>
                 )}
                 <div className="flex justify-between items-center py-1">
@@ -509,13 +461,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                     {currentMethod?.account_name || 'Afoodable Bites'}
                   </span>
                 </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-xs text-amber-900">
-                <p className="font-semibold">💡 Paalala:</p>
-                <p className="text-zinc-600 mt-0.5">
-                  I-screenshot o itabi ang resibo para sa mabilisang verification kapag dumating ang inyong pagkain.
-                </p>
               </div>
             </div>
           )}
