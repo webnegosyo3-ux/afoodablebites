@@ -38,7 +38,8 @@ const Header: React.FC<HeaderProps> = ({
                 e.currentTarget.src = "/logo.jpg";
               }}
             />
-            <div>
+            {/* Store Name hidden on mobile view */}
+            <div className="hidden sm:block">
               <div className="flex items-center space-x-1.5">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white group-hover:text-amber-400 transition-colors drop-shadow">
                   {siteSettings?.site_name || "Afoodable Bites"}
@@ -53,18 +54,8 @@ const Header: React.FC<HeaderProps> = ({
 
           {/* Action and Navigation Buttons */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* If currently in Menu/Cart/Checkout, show Home/Promos button */}
-            {currentView !== 'welcome' ? (
-              <button 
-                type="button"
-                onClick={onHomeClick}
-                className="px-3 sm:px-4 py-2 sm:py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 rounded-xl transition-all duration-200 flex items-center space-x-1.5 font-bold text-xs sm:text-sm active:scale-95"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span>Promos</span>
-              </button>
-            ) : (
-              /* If currently on Welcome, show direct Menu button */
+            {/* If currently on Welcome, show direct Menu button */}
+            {currentView === 'welcome' && (
               <button 
                 type="button"
                 onClick={onMenuClick}

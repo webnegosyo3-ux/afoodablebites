@@ -74,52 +74,38 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
           </span>
         </div>
 
-        {/* Swipe Hint + Navigation Arrows */}
-        <div className="flex items-center space-x-2">
-          <span className="hidden sm:inline-flex items-center space-x-1 text-xs font-bold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
-            <span>👈</span>
-            <span>Swipe left / right</span>
-            <span>👉</span>
-          </span>
-
-          <div className="flex items-center space-x-1.5">
-            <button
-              type="button"
-              onClick={() => scroll('left')}
-              disabled={!canScrollLeft}
-              aria-label="Scroll left"
-              className={`p-2 rounded-full border transition-all duration-200 active:scale-90 ${
-                canScrollLeft
-                  ? 'bg-white text-zinc-800 border-zinc-300 hover:bg-amber-500 hover:text-white hover:border-amber-500 shadow-sm'
-                  : 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed opacity-50'
-              }`}
-            >
-              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scroll('right')}
-              disabled={!canScrollRight}
-              aria-label="Scroll right"
-              className={`p-2 rounded-full border transition-all duration-200 active:scale-90 ${
-                canScrollRight
-                  ? 'bg-white text-zinc-800 border-zinc-300 hover:bg-amber-500 hover:text-white hover:border-amber-500 shadow-sm'
-                  : 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed opacity-50'
-              }`}
-            >
-              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </div>
+        {/* Navigation Arrows */}
+        <div className="flex items-center space-x-1.5">
+          <button
+            type="button"
+            onClick={() => scroll('left')}
+            disabled={!canScrollLeft}
+            aria-label="Scroll left"
+            className={`p-2 rounded-full border transition-all duration-200 active:scale-90 ${
+              canScrollLeft
+                ? 'bg-white text-zinc-800 border-zinc-300 hover:bg-amber-500 hover:text-white hover:border-amber-500 shadow-sm'
+                : 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed opacity-50'
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scroll('right')}
+            disabled={!canScrollRight}
+            aria-label="Scroll right"
+            className={`p-2 rounded-full border transition-all duration-200 active:scale-90 ${
+              canScrollRight
+                ? 'bg-white text-zinc-800 border-zinc-300 hover:bg-amber-500 hover:text-white hover:border-amber-500 shadow-sm'
+                : 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed opacity-50'
+            }`}
+          >
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
         </div>
       </div>
 
-      {/* Mobile Swipe Cue Bar */}
-      <div className="sm:hidden flex items-center justify-between text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/70 rounded-lg px-3 py-1 mb-3">
-        <span>👉 Swipe left and right to see all items</span>
-        <span className="text-xs">‹ ›</span>
-      </div>
-
-      {/* Horizontal Swipe Container (Swipe Left & Right) */}
+      {/* Horizontal Swipe Container */}
       <div
         ref={scrollRef}
         className="flex space-x-4 sm:space-x-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide py-2 px-1 scroll-smooth"

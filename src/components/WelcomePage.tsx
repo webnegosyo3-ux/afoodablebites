@@ -64,7 +64,8 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onOrderNow }) => {
               e.currentTarget.src = "/logo.jpg";
             }}
           />
-          <div>
+          {/* Header name hidden on mobile */}
+          <div className="hidden sm:block">
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center space-x-1.5">
               <span>Afoodable Bites</span>
               <Flame className="w-5 h-5 text-orange-500 animate-pulse" />
@@ -73,11 +74,6 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onOrderNow }) => {
               {config.tagline || 'Always Serving Hot!'}
             </p>
           </div>
-        </div>
-
-        <div className="hidden sm:flex items-center space-x-1.5 text-xs font-bold text-amber-300 bg-white/5 px-3.5 py-1.5 rounded-full backdrop-blur-sm border border-white/10">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>Promos & Events</span>
         </div>
       </div>
 
