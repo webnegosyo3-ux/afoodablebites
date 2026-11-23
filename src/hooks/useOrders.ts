@@ -20,61 +20,85 @@ export interface CreateOrderInput {
   notes?: string;
 }
 
-export const useOrders = () => {
-  const [orders, setOrders] = useState<AdminOrder[]>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return [];
-  });
+// Module-level cache to share across all hooks without duplicate network requests
+let cachedOrders: AdminOrder[] = [];
+let isCacheLoaded = false;
+let isOrdersTableMissingInSupabase = false;
+let globalPollInterval: ReturnType<typeof setInterval> | null = null;
+const subscribers = new Set<(orders: AdminOrder[]) => void>();
 
+const loadLocalOrders = (): AdminOrder[] => {
+  try {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return [];
+};
+
+cachedOrders = loadLocalOrders();
+isCacheLoaded = true;
+
+const notifySubscribers = (newOrders: AdminOrder[]) => {
+  cachedOrders = newOrders;
+  subscribers.forEach((cb) => cb(newOrders));
+};
+
+export const useOrders = () => {
+  const [orders, setOrders] = useState<AdminOrder[]>(cachedOrders);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const previousOrdersCountRef = useRef(orders.length);
+  const previousOrdersCountRef = useRef(cachedOrders.length);
 
   const saveToLocal = (newOrders: AdminOrder[]) => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newOrders));
       localStorage.setItem(PING_KEY, Date.now().toString());
-      setOrders(newOrders);
+      notifySubscribers(newOrders);
     } catch {
       // ignore
     }
   };
 
-  const fetchOrders = useCallback(async () => {
-    if (!isSupabaseConfigured) {
-      // Check local storage in case another tab updated it
-      try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setOrders(parsed);
-          }
-        }
-      } catch {}
+  const fetchOrders = useCallback(async (isInitial = false) => {
+    // If Supabase table is known to not exist, don't spam failed 404 network requests
+    if (!isSupabaseConfigured || isOrdersTableMissingInSupabase) {
+      const local = loadLocalOrders();
+      notifySubscribers(local);
       return;
     }
 
     try {
-      setLoading(true);
+      // Only set loading indicator on initial mount if we have no orders cached yet
+      if (isInitial && cachedOrders.length === 0) {
+        setLoading(true);
+      }
       setError(null);
+
       const { data, error: fetchErr } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (fetchErr) {
-        console.warn('Supabase fetch orders notice:', fetchErr.message);
+        // If table doesn't exist in Supabase (HTTP 404 or PGRST205), switch to local-first mode
+        if (
+          fetchErr.code === 'PGRST205' || 
+          fetchErr.message.includes('schema cache') || 
+          fetchErr.message.includes('not found') ||
+          (fetchErr as any).status === 404
+        ) {
+          isOrdersTableMissingInSupabase = true;
+          console.info('Supabase orders table not found; running in high-speed local mode.');
+        } else {
+          console.warn('Supabase fetch orders notice:', fetchErr.message);
+        }
+        const local = loadLocalOrders();
+        notifySubscribers(local);
         return;
       }
 
@@ -101,74 +125,56 @@ export const useOrders = () => {
         saveToLocal(mapped);
       }
     } catch (err) {
-      console.warn('Orders fetch error:', err);
+      console.warn('Orders fetch notice:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchOrders();
+    // Subscribe this component instance to central cache updates
+    subscribers.add(setOrders);
+
+    // Initial instant load
+    fetchOrders(true);
 
     // Listen to changes from other tabs via storage events
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === LOCAL_STORAGE_KEY || e.key === PING_KEY) {
-        try {
-          const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
-              setOrders(parsed);
-              if (parsed.length > previousOrdersCountRef.current && parsed[0]) {
-                window.dispatchEvent(
-                  new CustomEvent('afoodable_new_order_event', { detail: parsed[0] })
-                );
-              }
-              previousOrdersCountRef.current = parsed.length;
-            }
-          }
-        } catch {}
+        const fresh = loadLocalOrders();
+        if (fresh.length > previousOrdersCountRef.current && fresh[0]) {
+          window.dispatchEvent(
+            new CustomEvent('afoodable_new_order_event', { detail: fresh[0] })
+          );
+        }
+        previousOrdersCountRef.current = fresh.length;
+        notifySubscribers(fresh);
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
 
-    // Supabase Realtime subscription if available
-    let realtimeChannel: any = null;
-    if (isSupabaseConfigured) {
-      try {
-        realtimeChannel = supabase
-          .channel('orders-realtime')
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'orders' },
-            () => {
-              fetchOrders();
-            }
-          )
-          .subscribe();
-      } catch (err) {
-        console.warn('Realtime subscription error:', err);
-      }
+    // Setup a single shared polling timer if not already active
+    if (!globalPollInterval) {
+      globalPollInterval = setInterval(() => {
+        if (!isOrdersTableMissingInSupabase) {
+          fetchOrders(false);
+        }
+      }, 8000);
     }
 
-    // Polling interval every 6 seconds as a robust fallback
-    const pollInterval = setInterval(() => {
-      fetchOrders();
-    }, 6000);
-
     return () => {
+      subscribers.delete(setOrders);
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(pollInterval);
-      if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel);
+      if (subscribers.size === 0 && globalPollInterval) {
+        clearInterval(globalPollInterval);
+        globalPollInterval = null;
       }
     };
   }, [fetchOrders]);
 
   const createOrder = async (input: CreateOrderInput): Promise<AdminOrder> => {
     const now = new Date().toISOString();
-    // Unique human-friendly order code e.g. AB-8492
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const orderId = `AB-${randomCode}`;
 
@@ -182,16 +188,16 @@ export const useOrders = () => {
       updatedAt: now
     };
 
-    const updated = [newOrder, ...orders];
+    const updated = [newOrder, ...cachedOrders];
     saveToLocal(updated);
     previousOrdersCountRef.current = updated.length;
 
-    // Dispatch custom event for same-tab listeners (e.g. if admin is in same app or tests)
+    // Dispatch event for instant notification modal & audio chime
     window.dispatchEvent(
       new CustomEvent('afoodable_new_order_event', { detail: newOrder })
     );
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && !isOrdersTableMissingInSupabase) {
       try {
         const payload: any = {
           id: orderId,
@@ -216,7 +222,7 @@ export const useOrders = () => {
 
         await supabase.from('orders').insert(payload);
       } catch (err) {
-        console.warn('Supabase insert order error:', err);
+        console.warn('Supabase insert order notice:', err);
       }
     }
 
@@ -225,12 +231,12 @@ export const useOrders = () => {
 
   const updateOrderStatus = async (id: string, status: OrderStatus) => {
     const now = new Date().toISOString();
-    const updated = orders.map((o) =>
+    const updated = cachedOrders.map((o) =>
       o.id === id ? { ...o, status, updatedAt: now } : o
     );
     saveToLocal(updated);
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && !isOrdersTableMissingInSupabase) {
       try {
         await supabase
           .from('orders')
@@ -246,10 +252,10 @@ export const useOrders = () => {
   };
 
   const deleteOrder = async (id: string) => {
-    const updated = orders.filter((o) => o.id !== id);
+    const updated = cachedOrders.filter((o) => o.id !== id);
     saveToLocal(updated);
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && !isOrdersTableMissingInSupabase) {
       try {
         await supabase
           .from('orders')
@@ -264,7 +270,7 @@ export const useOrders = () => {
   const clearAllOrders = async () => {
     saveToLocal([]);
     previousOrdersCountRef.current = 0;
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && !isOrdersTableMissingInSupabase) {
       try {
         await supabase.from('orders').delete().neq('id', '');
       } catch (err) {
@@ -281,6 +287,6 @@ export const useOrders = () => {
     updateOrderStatus,
     deleteOrder,
     clearAllOrders,
-    refetch: fetchOrders
+    refetch: () => fetchOrders(false)
   };
 };

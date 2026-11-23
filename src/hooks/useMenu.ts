@@ -5,18 +5,21 @@ import { DEFAULT_MENU_ITEMS } from '../data/defaultMenu';
 
 export const useMenu = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
+  // Start as false — DEFAULT_MENU_ITEMS are always available immediately,
+  // so the UI renders without a loading gate even before Supabase responds.
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMenuItems = async () => {
     if (!isSupabaseConfigured) {
       setMenuItems(DEFAULT_MENU_ITEMS);
-      setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      // Don't set loading=true here — we already have DEFAULT_MENU_ITEMS displayed,
+      // so there's no need to show a spinner while Supabase responds.
+      // The UI stays responsive on slow mobile connections.
 
       const { data: items, error: itemsError } = await supabase
         .from('menu_items')
@@ -82,8 +85,6 @@ export const useMenu = () => {
       console.warn('Error fetching menu items from Supabase, using defaults:', err);
       setMenuItems(DEFAULT_MENU_ITEMS);
       setError(err instanceof Error ? err.message : 'Using default menu items');
-    } finally {
-      setLoading(false);
     }
   };
 

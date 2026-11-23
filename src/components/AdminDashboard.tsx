@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp,
   Package, Users, Lock, FolderOpen, CreditCard, Settings, Sparkles, Flame,
-  ShoppingBag, Bell, BellOff, BarChart3, Menu
+  ShoppingBag, Bell, BellOff, BarChart3, Menu, Volume2
 } from 'lucide-react';
 import { MenuItem, Variation, AddOn, AdminOrder } from '../types';
 import { addOnCategories } from '../data/menuData';
@@ -13,7 +13,11 @@ import {
   isSoundAlertEnabled,
   setSoundAlertEnabled,
   playOrderRingtone,
-  stopOrderRingtone
+  stopOrderRingtone,
+  unlockAudio,
+  isAudioUnlocked,
+  vibrateDevice,
+  testOrderChime
 } from '../utils/audioAlert';
 import ImageUpload from './ImageUpload';
 import CategoryManager from './CategoryManager';
@@ -122,12 +126,17 @@ const AdminDashboard: React.FC = () => {
   const [isSlideDrawerOpen, setIsSlideDrawerOpen] = useState(false);
   const initialOrdersCountRef = useRef<number | null>(null);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  // Tracks whether the Web Audio API has been unlocked via a user gesture on this device.
+  // On mobile (iOS/Android) audio stays silent until the user taps something.
+  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(isAudioUnlocked());
 
-  const toggleSound = () => {
+  const toggleSound = async () => {
     const next = !soundEnabled;
     setSoundEnabledState(next);
     setSoundAlertEnabled(next);
     if (next) {
+      await unlockAudio();
+      setAudioUnlocked(isAudioUnlocked());
       testOrderChime();
     } else {
       stopOrderRingtone();
@@ -147,18 +156,24 @@ const AdminDashboard: React.FC = () => {
     );
     if (newArrival) {
       knownOrderIdsRef.current.add(newArrival.id);
+      // Always show the popup regardless of audio state
       setActiveNewOrderAlert(newArrival);
+      // Vibrate immediately (works without audio unlock on Android)
+      vibrateDevice([400, 150, 400, 150, 600]);
+      // Play ringtone — will silently skip if audio context isn't unlocked yet on mobile
       playOrderRingtone(30);
     }
   }, [orders]);
 
-  // Also listen for real-time dispatch events
+  // Also listen for real-time dispatch events (same-tab instant notification)
   useEffect(() => {
     const handler = (e: any) => {
       const newOrder = e.detail as AdminOrder;
       if (newOrder) {
         knownOrderIdsRef.current.add(newOrder.id);
+        // Always show the popup
         setActiveNewOrderAlert(newOrder);
+        vibrateDevice([400, 150, 400, 150, 600]);
         playOrderRingtone(30);
       }
     };
@@ -255,11 +270,13 @@ const AdminDashboard: React.FC = () => {
   };
   const removeAddOn = (idx: number) => setFormData({ ...formData, addOns: formData.addOns?.filter((_, i) => i !== idx) });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password === 'admin@afoodablebites') {
       setIsAuthenticated(true); localStorage.setItem('beracah_admin_auth', 'true'); setLoginError('');
-      // Activate audio context on login gesture
+      // Unlock audio on the login button press (user gesture) — critical for iOS/Android
+      await unlockAudio();
+      setAudioUnlocked(isAudioUnlocked());
       testOrderChime();
     } else { setLoginError('Incorrect password. Try again.'); }
   };
@@ -372,75 +389,130 @@ const AdminDashboard: React.FC = () => {
     );
   }
 
-  // ── LOADING ──────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-zinc-400 text-sm font-medium">Loading menu data…</p>
-        </div>
-      </div>
-    );
-  }
+  // ── LOADING (Only block screen if no cached/default items exist) ──────────────
+  // NOTE: useMenu initialises with DEFAULT_MENU_ITEMS so this gate almost never fires.
+  // We keep a minimal check only to avoid a flash of empty stats on very first load.
+  // The dashboard itself renders immediately — only the stats cards show a skeleton.
 
-  // ── FLOATING INCOMING ORDER ALERT BANNER ─────────────────────────────────────
-  const floatingAlertBanner = activeNewOrderAlert && (
-    <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 text-white p-4 rounded-2xl shadow-2xl border-2 border-yellow-300 animate-bounce flex flex-col space-y-2.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <span className="text-2xl animate-spin">🔔</span>
-          <span className="font-black text-sm uppercase tracking-wider">BAGONG ORDER DUMATING!</span>
+  // ── FULL-SCREEN INCOMING ORDER POP-UP MODAL (MOBILE & DESKTOP OPTIMIZED) ───────
+  const incomingOrderModal = activeNewOrderAlert && (
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-zinc-900 border-2 border-amber-400 rounded-3xl p-5 sm:p-6 w-full max-w-sm sm:max-w-md shadow-2xl relative overflow-hidden animate-scale-up text-white">
+        {/* Top decorative gradient bar */}
+        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
+
+        {/* Modal Header with Animated Bell */}
+        <div className="flex items-center justify-between mb-4 mt-1">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 p-0.5 shadow-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-full h-full bg-zinc-950 rounded-2xl flex items-center justify-center">
+                <span className="text-2xl animate-bounce">🔔</span>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-amber-400 tracking-tight leading-tight uppercase flex items-center space-x-1.5">
+                <span>BAGONG ORDER!</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping inline-block" />
+              </h3>
+              <p className="text-xs text-zinc-400 font-medium">Pumasok ngayon lang sa Kusina 🔥</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              stopOrderRingtone();
+              setActiveNewOrderAlert(null);
+            }}
+            className="p-1.5 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-full transition"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            stopOrderRingtone();
-            setActiveNewOrderAlert(null);
-          }}
-          className="text-white/80 hover:text-white text-xs font-bold bg-black/20 hover:bg-black/40 rounded-full w-6 h-6 flex items-center justify-center"
-        >
-          ✕
-        </button>
-      </div>
-      <div className="text-xs bg-black/30 backdrop-blur-sm rounded-xl p-3 space-y-1">
-        <div className="flex justify-between font-bold">
-          <span>Order #{activeNewOrderAlert.id}</span>
-          <span className="text-amber-200">₱{activeNewOrderAlert.total}</span>
+
+        {/* Order Details Snapshot */}
+        <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl p-4 space-y-2 mb-4 text-xs sm:text-sm">
+          <div className="flex justify-between items-center pb-2 border-b border-zinc-800 font-bold">
+            <span className="text-zinc-400">Order ID:</span>
+            <span className="text-amber-400 font-mono text-sm sm:text-base font-black">#{activeNewOrderAlert.id}</span>
+          </div>
+          <div className="flex justify-between items-center text-zinc-300">
+            <span className="text-zinc-400">Customer:</span>
+            <span className="font-bold text-white text-right truncate max-w-[190px]">{activeNewOrderAlert.customerName}</span>
+          </div>
+          <div className="flex justify-between items-center text-zinc-300">
+            <span className="text-zinc-400">Contact:</span>
+            <span className="font-mono text-zinc-200">{activeNewOrderAlert.contactNumber}</span>
+          </div>
+          <div className="flex justify-between items-center text-zinc-300">
+            <span className="text-zinc-400">Service:</span>
+            <span className="font-bold text-amber-300 uppercase px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30">
+              {activeNewOrderAlert.serviceType}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-zinc-300">
+            <span className="text-zinc-400">Payment:</span>
+            <span className="font-semibold text-zinc-100">{activeNewOrderAlert.paymentMethod}</span>
+          </div>
+          <div className="flex justify-between items-center pt-2 border-t border-zinc-800 font-black text-sm sm:text-base">
+            <span className="text-white">Total Amount:</span>
+            <span className="text-amber-400 text-base sm:text-lg">₱{activeNewOrderAlert.total}</span>
+          </div>
         </div>
-        <p className="text-amber-100 truncate font-semibold">
-          {activeNewOrderAlert.customerName} ({activeNewOrderAlert.contactNumber})
-        </p>
-        <p className="text-amber-200 text-[11px]">
-          {activeNewOrderAlert.serviceType.toUpperCase()} • {activeNewOrderAlert.paymentMethod}
-        </p>
-      </div>
-      <div className="flex items-center space-x-2 pt-1">
-        <button
-          type="button"
-          onClick={() => {
-            stopOrderRingtone();
-            setActiveNewOrderAlert(null);
-            setCurrentView('orders');
-          }}
-          className="flex-1 py-2 bg-white text-zinc-950 rounded-xl font-black text-xs hover:bg-yellow-100 transition shadow flex items-center justify-center space-x-1"
-        >
-          <span>Tingnan ang Order</span>
-          <span>📋</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            stopOrderRingtone();
-            setActiveNewOrderAlert(null);
-          }}
-          className="px-3 py-2 bg-black/30 hover:bg-black/50 text-white rounded-xl font-bold text-xs transition"
-        >
-          Stop Ring 🔕
-        </button>
+
+        {/* Action Buttons */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              stopOrderRingtone();
+              setActiveNewOrderAlert(null);
+              setCurrentView('orders');
+            }}
+            className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-black text-sm sm:text-base shadow-lg hover:shadow-orange-500/30 transition-all duration-200 flex items-center justify-center space-x-2 active:scale-95"
+          >
+            <span>TINGNAN ANG ORDER</span>
+            <span>📋</span>
+          </button>
+
+          {/* Mobile audio unlock — shown only if audio hasn't been unlocked yet */}
+          {!audioUnlocked && (
+            <button
+              type="button"
+              onClick={async () => {
+                await unlockAudio();
+                setAudioUnlocked(isAudioUnlocked());
+                playOrderRingtone(30);
+              }}
+              className="w-full py-2.5 bg-amber-500/20 border border-amber-500/50 hover:bg-amber-500/30 text-amber-300 hover:text-amber-200 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5"
+            >
+              <Volume2 className="w-4 h-4" />
+              <span>I-tap para marinig ang ringtone 🔔</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              stopOrderRingtone();
+              setActiveNewOrderAlert(null);
+            }}
+            className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5"
+          >
+            <span>I-mute ang Ringtone & I-sara</span>
+            <span>🔕</span>
+          </button>
+        </div>
       </div>
     </div>
   );
+
+  const floatingAlertBanner = incomingOrderModal;
 
   // ── LEFT-SIDE SLIDE FEATURES DRAWER (ALL SECTIONS) ──────────────────────────
   const slideFeaturesDrawer = isSlideDrawerOpen && (
@@ -1230,6 +1302,22 @@ const AdminDashboard: React.FC = () => {
 
               {/* Right: Sound Alert + Logout */}
               <div className="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
+                {/* One-time mobile audio unlock button — disappears after first tap */}
+                {!audioUnlocked && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await unlockAudio();
+                      setAudioUnlocked(isAudioUnlocked());
+                      testOrderChime();
+                    }}
+                    className="flex items-center space-x-1 px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-[11px] rounded-lg shadow transition active:scale-95 sm:hidden"
+                    title="Tap to enable order sound alerts"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Enable Sound</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={toggleSound}
