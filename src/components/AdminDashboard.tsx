@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp,
   Package, Users, Lock, FolderOpen, CreditCard, Settings, Sparkles, Flame,
-  ShoppingBag, Bell, BellOff, BarChart3
+  ShoppingBag, Bell, BellOff, BarChart3, Menu
 } from 'lucide-react';
 import { MenuItem, Variation, AddOn, AdminOrder } from '../types';
 import { addOnCategories } from '../data/menuData';
@@ -31,11 +31,23 @@ const AdminTopbar: React.FC<{
   onBack?: () => void;
   backLabel?: string;
   right?: React.ReactNode;
-}> = ({ title, onBack, backLabel = 'Dashboard', right }) => (
+  onOpenSlideMenu?: () => void;
+}> = ({ title, onBack, backLabel = 'Dashboard', right, onOpenSlideMenu }) => (
   <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between h-14 sm:h-16">
         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          {onOpenSlideMenu && (
+            <button
+              type="button"
+              onClick={onOpenSlideMenu}
+              className="p-1.5 sm:p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 rounded-xl transition active:scale-95 flex-shrink-0"
+              title="Open Navigation Menu"
+              aria-label="Open slide menu"
+            >
+              <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+            </button>
+          )}
           {onBack && (
             <>
               <button
@@ -106,6 +118,8 @@ const AdminDashboard: React.FC = () => {
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(isSoundAlertEnabled());
   const [activeNewOrderAlert, setActiveNewOrderAlert] = useState<AdminOrder | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  const [isSlideDrawerOpen, setIsSlideDrawerOpen] = useState(false);
   const initialOrdersCountRef = useRef<number | null>(null);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
 
@@ -428,15 +442,273 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
+  // ── LEFT-SIDE SLIDE FEATURES DRAWER (ALL SECTIONS) ──────────────────────────
+  const slideFeaturesDrawer = isSlideDrawerOpen && (
+    <div className="fixed inset-0 z-50 flex">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        onClick={() => setIsSlideDrawerOpen(false)}
+      />
+
+      {/* Drawer Panel Sliding from the Left */}
+      <div className="relative w-80 max-w-[85vw] bg-zinc-950 border-r border-amber-500/40 h-full p-4 sm:p-5 flex flex-col z-10 shadow-2xl">
+        {/* Header: Logo + Title + Close Button */}
+        <div className="flex items-center justify-between pb-3.5 border-b border-zinc-800 mb-3">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <img
+              src="/images/afodable-bites-logo.jpg"
+              alt="Logo"
+              className="w-8 h-8 rounded-full object-cover ring-2 ring-amber-500/40 flex-shrink-0"
+              onError={e => { e.currentTarget.src = '/logo.jpg'; }}
+            />
+            <div className="min-w-0">
+              <h3 className="font-black text-white text-sm truncate flex items-center space-x-1">
+                <span>Afoodable Admin</span>
+                <Flame className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+              </h3>
+              <p className="text-[10px] text-zinc-400 font-medium">All Sections & Slide Features</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsSlideDrawerOpen(false)}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+            aria-label="Close slide menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable Navigation: ALL SECTIONS */}
+        <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+          <div className="text-[10px] font-black text-amber-400 uppercase tracking-wider px-2 py-1 flex items-center justify-between">
+            <span>Admin Sections</span>
+            <span className="text-[10px] text-zinc-500 font-mono">10 Modules</span>
+          </div>
+
+          {[
+            {
+              id: 'dashboard',
+              label: 'Sales & Analytics',
+              icon: BarChart3,
+              desc: 'Revenue, orders & top dishes',
+              action: () => { setCurrentView('dashboard'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'dashboard',
+              badge: 'Screen'
+            },
+            {
+              id: 'orders',
+              label: 'Customer Orders',
+              icon: ShoppingBag,
+              desc: 'Live incoming orders & ringtone',
+              action: () => { setCurrentView('orders'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'orders',
+              badge: orders.filter(o => o.status === 'pending').length > 0
+                ? `${orders.filter(o => o.status === 'pending').length} Pending`
+                : `${orders.length} Total`
+            },
+            {
+              id: 'items',
+              label: 'Manage Menu Items',
+              icon: Package,
+              desc: 'All dishes, prices, availability',
+              action: () => { setSelectedCategoryFilter('all'); setCurrentView('items'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'items',
+              badge: `${totalItems}`
+            },
+            {
+              id: 'categories',
+              label: 'Menu Categories',
+              icon: FolderOpen,
+              desc: 'Add, reorder & edit categories',
+              action: () => { setCurrentView('categories'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'categories',
+              badge: `${categories.length}`
+            },
+            {
+              id: 'customers',
+              label: 'Customer Directory',
+              icon: Users,
+              desc: 'CRM, repeat buyers, contacts',
+              action: () => { setCurrentView('customers'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'customers',
+              badge: `${totalCustomersCount}`
+            },
+            {
+              id: 'upsells',
+              label: 'Upsell & Cross-sells',
+              icon: Flame,
+              desc: 'Boost checkouts with add-ons',
+              action: () => { setCurrentView('upsells'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'upsells'
+            },
+            {
+              id: 'payments',
+              label: 'Payment Methods & QR',
+              icon: CreditCard,
+              desc: 'GCash QR, COD, banking',
+              action: () => { setCurrentView('payments'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'payments'
+            },
+            {
+              id: 'welcome',
+              label: 'Welcome & Promo Slides',
+              icon: Sparkles,
+              desc: 'Promo popups & announcement slides',
+              action: () => { setCurrentView('welcome'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'welcome'
+            },
+            {
+              id: 'settings',
+              label: 'Site Settings',
+              icon: Settings,
+              desc: 'Store info, hours, logo',
+              action: () => { setCurrentView('settings'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'settings'
+            },
+            {
+              id: 'add',
+              label: 'Add New Food Item',
+              icon: Plus,
+              desc: 'Create new dish or drink',
+              action: () => { handleAddItem(); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'add'
+            }
+          ].map(({ id, label, icon: Icon, desc, action, highlight, badge }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={action}
+              className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition ${
+                highlight
+                  ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 font-bold shadow-sm'
+                  : 'hover:bg-zinc-900 text-zinc-300 border border-transparent'
+              }`}
+            >
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <div className={`p-1.5 rounded-lg flex-shrink-0 ${
+                  highlight ? 'bg-amber-500 text-black' : 'bg-zinc-800 text-zinc-400'
+                }`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold block truncate leading-tight">{label}</span>
+                  <span className="text-[10px] text-zinc-500 block truncate leading-tight mt-0.5">{desc}</span>
+                </div>
+              </div>
+              {badge && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                  highlight
+                    ? 'bg-amber-500/30 text-amber-300'
+                    : 'bg-zinc-800 text-zinc-400'
+                }`}>
+                  {badge}
+                </span>
+              )}
+            </button>
+          ))}
+
+          {/* Category Shortcuts */}
+          <div className="text-[10px] font-black text-amber-400 uppercase tracking-wider px-2 pt-3 pb-1 border-t border-zinc-800/80 mt-2 flex items-center justify-between">
+            <span>Filter by Category</span>
+            <span className="text-[10px] text-zinc-500">{totalItems} items</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategoryFilter('all');
+              setIsSlideDrawerOpen(false);
+              setCurrentView('items');
+            }}
+            className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition text-xs ${
+              selectedCategoryFilter === 'all' && currentView === 'items'
+                ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 font-bold'
+                : 'hover:bg-zinc-900 text-zinc-300 border border-transparent'
+            }`}
+          >
+            <span className="flex items-center space-x-2">
+              <span className="text-base">🍽️</span>
+              <span>All Dishes</span>
+            </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400">
+              {totalItems}
+            </span>
+          </button>
+
+          {categoryCounts.map(cat => {
+            const isSelected = selectedCategoryFilter === cat.id && currentView === 'items';
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCategoryFilter(cat.id);
+                  setIsSlideDrawerOpen(false);
+                  setCurrentView('items');
+                }}
+                className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition text-xs ${
+                  isSelected
+                    ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 font-bold'
+                    : 'hover:bg-zinc-900 text-zinc-300 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center space-x-2 min-w-0">
+                  <span className="text-base flex-shrink-0">{cat.icon}</span>
+                  <span className="truncate">{cat.name}</span>
+                </div>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400 flex-shrink-0">
+                  {cat.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Drawer Footer: Sound Alert & Logout */}
+        <div className="pt-3 border-t border-zinc-800 mt-2 space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <button
+              type="button"
+              onClick={toggleSound}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                soundEnabled
+                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+              }`}
+            >
+              {soundEnabled ? <Bell className="w-3.5 h-3.5 text-amber-400" /> : <BellOff className="w-3.5 h-3.5" />}
+              <span>{soundEnabled ? 'Ring: ON' : 'Ring: MUTED'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSlideDrawerOpen(false);
+                handleLogout();
+              }}
+              className="text-xs font-semibold text-zinc-400 hover:text-red-400 transition px-2 py-1"
+            >
+              Logout 🚪
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // ── ADD / EDIT ITEM FORM ─────────────────────────────────────────────────────
   if (currentView === 'add' || currentView === 'edit') {
     return (
       <>
         {floatingAlertBanner}
+        {slideFeaturesDrawer}
         <div className="min-h-screen bg-zinc-950">
           <AdminTopbar
             title={currentView === 'add' ? '➕ Add Menu Item' : '✏️ Edit Menu Item'}
             onBack={handleCancel} backLabel="Menu Items"
+            onOpenSlideMenu={() => setIsSlideDrawerOpen(true)}
             right={
               <>
                 <GhostBtn onClick={handleCancel} disabled={isProcessing}><X className="h-4 w-4" /><span>Cancel</span></GhostBtn>
@@ -447,7 +719,7 @@ const AdminDashboard: React.FC = () => {
             }
           />
 
-        <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 py-5 sm:py-8 space-y-5 sm:space-y-6">
           {isProcessing && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center space-x-3">
               <div className="h-5 w-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
@@ -583,162 +855,314 @@ const AdminDashboard: React.FC = () => {
 
   // ── MENU ITEMS LIST ──────────────────────────────────────────────────────────
   if (currentView === 'items') {
+    const displayedItems = selectedCategoryFilter === 'all'
+      ? menuItems
+      : menuItems.filter(i => i.category === selectedCategoryFilter);
+
     return (
       <>
         {floatingAlertBanner}
+        {slideFeaturesDrawer}
         <div className="min-h-screen bg-zinc-950">
           <AdminTopbar
             title="🍽️ Menu Items"
             onBack={() => setCurrentView('dashboard')}
-          right={
-            <>
-              {showBulkActions && selectedItems.length > 0 && (
-                <span className="text-xs text-zinc-400 font-medium hidden sm:inline">{selectedItems.length} selected</span>
-              )}
-              <PrimaryBtn onClick={handleAddItem}><Plus className="h-4 w-4" /><span>Add Item</span></PrimaryBtn>
-            </>
-          }
-        />
-
-        <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-          {/* Bulk action bar */}
-          {showBulkActions && selectedItems.length > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <span className="text-amber-300 font-bold text-sm">{selectedItems.length} item(s) selected</span>
-              <div className="flex flex-wrap gap-2">
-                <select
-                  onChange={e => { if (e.target.value) { handleBulkCategoryChange(e.target.value); e.target.value = ''; } }}
-                  disabled={isProcessing}
-                  className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 text-xs focus:outline-none"
-                >
-                  <option value="">Change Category…</option>
-                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                </select>
-                <button onClick={handleBulkRemove} disabled={isProcessing} className="flex items-center space-x-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition disabled:opacity-50">
-                  <Trash2 className="h-3.5 w-3.5" /><span>{isProcessing ? 'Removing…' : 'Delete Selected'}</span>
-                </button>
-                <button onClick={() => { setSelectedItems([]); setShowBulkActions(false); }} className="flex items-center space-x-1 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold rounded-lg transition">
-                  <X className="h-3.5 w-3.5" /><span>Clear</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-            {/* Select all bar */}
-            {menuItems.length > 0 && (
-              <div className="bg-zinc-800/50 border-b border-zinc-800 px-5 py-3 flex items-center justify-between">
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input type="checkbox" checked={selectedItems.length === menuItems.length && menuItems.length > 0} onChange={handleSelectAll} className="w-4 h-4 rounded accent-amber-500" />
-                  <span className="text-xs font-medium text-zinc-400">Select All ({menuItems.length} items)</span>
-                </label>
-                {selectedItems.length > 0 && (
-                  <button onClick={() => setSelectedItems([])} className="text-xs text-zinc-500 hover:text-zinc-300 transition">{selectedItems.length} selected · Clear</button>
+            onOpenSlideMenu={() => setIsSlideDrawerOpen(true)}
+            right={
+              <>
+                {showBulkActions && selectedItems.length > 0 && (
+                  <span className="text-xs text-zinc-400 font-medium hidden sm:inline">{selectedItems.length} selected</span>
                 )}
-              </div>
-            )}
+                <PrimaryBtn onClick={handleAddItem}><Plus className="h-4 w-4" /><span>Add Item</span></PrimaryBtn>
+              </>
+            }
+          />
 
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider w-10"></th>
-                    <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Name</th>
-                    <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Category</th>
-                    <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Price</th>
-                    <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Extras</th>
-                    <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Status</th>
-                    <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800">
-                  {menuItems.map(item => (
-                    <tr key={item.id} className={`hover:bg-zinc-800/50 transition ${selectedItems.includes(item.id) ? 'bg-amber-500/5' : ''}`}>
-                      <td className="px-5 py-4">
-                        <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="w-4 h-4 rounded accent-amber-500" />
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="font-semibold text-white text-sm">{item.name}</div>
-                        <div className="text-xs text-zinc-500 truncate max-w-xs mt-0.5">{item.description}</div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1 rounded-full">
-                          {categories.find(c => c.id === item.category)?.name || item.category}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex gap-4 lg:gap-6 items-start">
+            {/* Left Side: Categories Sidebar (Desktop only on large screens, mobile uses horizontal bar + slide features) */}
+            <div className="hidden lg:block lg:w-64 flex-shrink-0 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sticky top-20 max-h-[calc(100vh-5rem)] overflow-y-auto scrollbar-none shadow-sm">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center space-x-1.5">
+                  <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Categories</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('categories')}
+                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 transition"
+                  title="Manage categories"
+                >
+                  Manage ⚙️
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategoryFilter('all')}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition ${
+                    selectedCategoryFilter === 'all'
+                      ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold shadow-md'
+                      : 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-transparent'
+                  }`}
+                >
+                  <span className="flex items-center space-x-2">
+                    <span className="text-lg">🍽️</span>
+                    <span className="text-xs font-semibold">All Dishes</span>
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    selectedCategoryFilter === 'all' ? 'bg-amber-500/40 text-amber-200' : 'bg-zinc-800 text-zinc-500'
+                  }`}>
+                    {menuItems.length}
+                  </span>
+                </button>
+
+                {categoryCounts.map(cat => {
+                  const isSelected = selectedCategoryFilter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedCategoryFilter(cat.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition ${
+                        isSelected
+                          ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold shadow-md'
+                          : 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <span className="text-lg flex-shrink-0">{cat.icon}</span>
+                        <span className="text-xs font-medium truncate">
+                          {cat.name}
                         </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        {item.isOnDiscount && item.discountPrice ? (
-                          <div>
-                            <div className="text-orange-400 font-bold text-sm">₱{item.discountPrice}</div>
-                            <div className="text-zinc-600 line-through text-xs">₱{item.basePrice}</div>
-                          </div>
-                        ) : (
-                          <span className="text-white font-semibold text-sm">₱{item.basePrice}</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 text-xs text-zinc-400">
-                        {item.variations?.length || 0} var · {item.addOns?.length || 0} add-on
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col space-y-1">
-                          {item.popular && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white">⭐ Popular</span>}
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${item.available ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-800' : 'bg-red-900/50 text-red-400 border border-red-800'}`}>
-                            {item.available ? '● Available' : '● Unavailable'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center space-x-1">
-                          <button onClick={() => handleEditItem(item)} disabled={isProcessing} title="Edit" className="p-2 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition">
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => handleDeleteItem(item.id)} disabled={isProcessing} title="Delete" className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full flex-shrink-0 font-bold ${
+                        isSelected ? 'bg-amber-500/40 text-amber-200' : 'bg-zinc-800 text-zinc-500'
+                      }`}>
+                        {cat.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Mobile Card View */}
-            <div className="md:hidden divide-y divide-zinc-800">
-              {menuItems.map(item => (
-                <div key={item.id} className={`p-4 ${selectedItems.includes(item.id) ? 'bg-amber-500/5' : ''}`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="w-4 h-4 rounded accent-amber-500" />
-                      <span className="font-semibold text-white text-sm">{item.name}</span>
-                    </label>
-                    <div className="flex space-x-1">
-                      <button onClick={() => handleEditItem(item)} disabled={isProcessing} className="p-1.5 text-zinc-400 hover:text-amber-400 rounded-lg transition"><Edit className="h-4 w-4" /></button>
-                      <button onClick={() => handleDeleteItem(item.id)} disabled={isProcessing} className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg transition"><Trash2 className="h-4 w-4" /></button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-zinc-500 mb-2 line-clamp-2">{item.description}</p>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className="text-amber-400 font-bold text-sm">₱{item.basePrice}</span>
-                    <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">{categories.find(c => c.id === item.category)?.name}</span>
-                    {item.popular && <span className="text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2 py-0.5 rounded-full">⭐ Popular</span>}
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${item.available ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
-                      {item.available ? 'Available' : 'Unavailable'}
-                    </span>
+            {/* Right Side: Menu Items Table & Content */}
+            <div className="flex-1 min-w-0 w-full space-y-3 sm:space-y-4">
+              {/* Mobile Horizontal Category Filter Scrollbar */}
+              <div className="lg:hidden flex items-center space-x-1.5 overflow-x-auto pb-2 scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategoryFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center space-x-1 flex-shrink-0 ${
+                    selectedCategoryFilter === 'all'
+                      ? 'bg-amber-500 text-black shadow'
+                      : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                  }`}
+                >
+                  <span>🍽️ All</span>
+                  <span className="text-[10px] opacity-75">({menuItems.length})</span>
+                </button>
+                {categoryCounts.map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategoryFilter(cat.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center space-x-1 flex-shrink-0 ${
+                      selectedCategoryFilter === cat.id
+                        ? 'bg-amber-500 text-black shadow'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                    }`}
+                  >
+                    <span>{cat.icon} {cat.name}</span>
+                    <span className="text-[10px] opacity-75">({cat.count})</span>
+                  </button>
+                ))}
+              </div>
+              {/* Bulk action bar */}
+              {showBulkActions && selectedItems.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <span className="text-amber-300 font-bold text-sm">{selectedItems.length} item(s) selected</span>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      onChange={e => { if (e.target.value) { handleBulkCategoryChange(e.target.value); e.target.value = ''; } }}
+                      disabled={isProcessing}
+                      className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 text-xs focus:outline-none"
+                    >
+                      <option value="">Change Category…</option>
+                      {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    </select>
+                    <button onClick={handleBulkRemove} disabled={isProcessing} className="flex items-center space-x-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition disabled:opacity-50">
+                      <Trash2 className="h-3.5 w-3.5" /><span>{isProcessing ? 'Removing…' : 'Delete Selected'}</span>
+                    </button>
+                    <button onClick={() => { setSelectedItems([]); setShowBulkActions(false); }} className="flex items-center space-x-1 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold rounded-lg transition">
+                      <X className="h-3.5 w-3.5" /><span>Clear</span>
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
 
-            {menuItems.length === 0 && (
-              <div className="py-16 text-center">
-                <Package className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
-                <h3 className="text-white font-semibold mb-1">No menu items yet</h3>
-                <p className="text-zinc-500 text-sm mb-4">Add your first dish to get started.</p>
-                <PrimaryBtn onClick={handleAddItem}><Plus className="h-4 w-4" /><span>Add First Item</span></PrimaryBtn>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                {/* Select all bar */}
+                {displayedItems.length > 0 && (
+                  <div className="bg-zinc-800/50 border-b border-zinc-800 px-4 sm:px-5 py-3 flex items-center justify-between">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.length === displayedItems.length && displayedItems.length > 0}
+                        onChange={() => {
+                          if (selectedItems.length === displayedItems.length) {
+                            setSelectedItems([]);
+                            setShowBulkActions(false);
+                          } else {
+                            setSelectedItems(displayedItems.map(i => i.id));
+                            setShowBulkActions(true);
+                          }
+                        }}
+                        className="w-4 h-4 rounded accent-amber-500"
+                      />
+                      <span className="text-xs font-medium text-zinc-400">
+                        {selectedCategoryFilter !== 'all' ? `Select In Category (${displayedItems.length} items)` : `Select All (${menuItems.length} items)`}
+                      </span>
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      {selectedCategoryFilter !== 'all' && (
+                        <button
+                          onClick={() => setSelectedCategoryFilter('all')}
+                          className="text-xs text-amber-400 hover:underline"
+                        >
+                          Show All Categories
+                        </button>
+                      )}
+                      {selectedItems.length > 0 && (
+                        <button onClick={() => setSelectedItems([])} className="text-xs text-zinc-500 hover:text-zinc-300 transition">
+                          {selectedItems.length} selected · Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-zinc-800">
+                        <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider w-10"></th>
+                        <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Name</th>
+                        <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Category</th>
+                        <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Price</th>
+                        <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Extras</th>
+                        <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Status</th>
+                        <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800">
+                      {displayedItems.map(item => (
+                        <tr key={item.id} className={`hover:bg-zinc-800/50 transition ${selectedItems.includes(item.id) ? 'bg-amber-500/5' : ''}`}>
+                          <td className="px-5 py-4">
+                            <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="w-4 h-4 rounded accent-amber-500" />
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="font-semibold text-white text-sm">{item.name}</div>
+                            <div className="text-xs text-zinc-500 truncate max-w-xs mt-0.5">{item.description}</div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1 rounded-full">
+                              {categories.find(c => c.id === item.category)?.name || item.category}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            {item.isOnDiscount && item.discountPrice ? (
+                              <div>
+                                <div className="text-orange-400 font-bold text-sm">₱{item.discountPrice}</div>
+                                <div className="text-zinc-600 line-through text-xs">₱{item.basePrice}</div>
+                              </div>
+                            ) : (
+                              <span className="text-white font-semibold text-sm">₱{item.basePrice}</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-xs text-zinc-400">
+                            {item.variations?.length || 0} var · {item.addOns?.length || 0} add-on
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex flex-col space-y-1">
+                              {item.popular && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white">⭐ Popular</span>}
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${item.available ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-800' : 'bg-red-900/50 text-red-400 border border-red-800'}`}>
+                                {item.available ? '● Available' : '● Unavailable'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center space-x-1">
+                              <button onClick={() => handleEditItem(item)} disabled={isProcessing} title="Edit" className="p-2 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition">
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button onClick={() => handleDeleteItem(item.id)} disabled={isProcessing} title="Delete" className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-zinc-800">
+                  {displayedItems.map(item => (
+                    <div key={item.id} className={`p-4 ${selectedItems.includes(item.id) ? 'bg-amber-500/5' : ''}`}>
+                      <div className="flex items-start justify-between mb-2">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="w-4 h-4 rounded accent-amber-500" />
+                          <span className="font-semibold text-white text-sm">{item.name}</span>
+                        </label>
+                        <div className="flex space-x-1">
+                          <button onClick={() => handleEditItem(item)} disabled={isProcessing} className="p-1.5 text-zinc-400 hover:text-amber-400 rounded-lg transition"><Edit className="h-4 w-4" /></button>
+                          <button onClick={() => handleDeleteItem(item.id)} disabled={isProcessing} className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg transition"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-zinc-500 mb-2 line-clamp-2">{item.description}</p>
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <span className="text-amber-400 font-bold text-sm">₱{item.basePrice}</span>
+                        <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">{categories.find(c => c.id === item.category)?.name}</span>
+                        {item.popular && <span className="text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2 py-0.5 rounded-full">⭐ Popular</span>}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${item.available ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+                          {item.available ? 'Available' : 'Unavailable'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {displayedItems.length === 0 && (
+                  <div className="py-16 text-center">
+                    <Package className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
+                    <h3 className="text-white font-semibold mb-1">
+                      {selectedCategoryFilter !== 'all' ? 'No items in this category' : 'No menu items yet'}
+                    </h3>
+                    <p className="text-zinc-500 text-sm mb-4">
+                      {selectedCategoryFilter !== 'all'
+                        ? 'Try selecting another category or add an item to this category.'
+                        : 'Add your first dish to get started.'}
+                    </p>
+                    <div className="flex items-center justify-center space-x-3">
+                      {selectedCategoryFilter !== 'all' && (
+                        <button
+                          onClick={() => setSelectedCategoryFilter('all')}
+                          className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-xl transition"
+                        >
+                          Show All Items
+                        </button>
+                      )}
+                      <PrimaryBtn onClick={handleAddItem}><Plus className="h-4 w-4" /><span>Add Item</span></PrimaryBtn>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
@@ -747,21 +1171,26 @@ const AdminDashboard: React.FC = () => {
 }
 
   // ── SUBVIEWS (delegate) ──────────────────────────────────────────────────────
-  if (currentView === 'orders') return <>{floatingAlertBanner}<OrdersManager onBack={() => setCurrentView('dashboard')} /></>;
-  if (currentView === 'analytics') return <>{floatingAlertBanner}<AnalyticsManager onBack={() => setCurrentView('dashboard')} /></>;
-  if (currentView === 'customers') return <>{floatingAlertBanner}<CustomerManager onBack={() => setCurrentView('dashboard')} /></>;
-  if (currentView === 'upsells') return <>{floatingAlertBanner}<UpsellManager onBack={() => setCurrentView('dashboard')} /></>;
-  if (currentView === 'categories') return <>{floatingAlertBanner}<CategoryManager onBack={() => setCurrentView('dashboard')} /></>;
-  if (currentView === 'payments') return <>{floatingAlertBanner}<PaymentMethodManager onBack={() => setCurrentView('dashboard')} /></>;
-  if (currentView === 'welcome') return <>{floatingAlertBanner}<WelcomePageManager onBack={() => setCurrentView('dashboard')} /></>;
+  if (currentView === 'orders') return <>{floatingAlertBanner}{slideFeaturesDrawer}<OrdersManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
+  if (currentView === 'analytics') return <>{floatingAlertBanner}{slideFeaturesDrawer}<AnalyticsManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
+  if (currentView === 'customers') return <>{floatingAlertBanner}{slideFeaturesDrawer}<CustomerManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
+  if (currentView === 'upsells') return <>{floatingAlertBanner}{slideFeaturesDrawer}<UpsellManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
+  if (currentView === 'categories') return <>{floatingAlertBanner}{slideFeaturesDrawer}<CategoryManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
+  if (currentView === 'payments') return <>{floatingAlertBanner}{slideFeaturesDrawer}<PaymentMethodManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
+  if (currentView === 'welcome') return <>{floatingAlertBanner}{slideFeaturesDrawer}<WelcomePageManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
 
   if (currentView === 'settings') {
     return (
       <>
         {floatingAlertBanner}
+        {slideFeaturesDrawer}
         <div className="min-h-screen bg-zinc-950">
-          <AdminTopbar title="⚙️ Site Settings" onBack={() => setCurrentView('dashboard')} />
-          <div className="max-w-4xl mx-auto px-4 py-8">
+          <AdminTopbar
+            title="⚙️ Site Settings"
+            onBack={() => setCurrentView('dashboard')}
+            onOpenSlideMenu={() => setIsSlideDrawerOpen(true)}
+          />
+          <div className="max-w-4xl mx-auto px-3 sm:px-6 py-5 sm:py-8">
             <SiteSettingsManager />
           </div>
         </div>
@@ -773,22 +1202,33 @@ const AdminDashboard: React.FC = () => {
   return (
     <>
       {floatingAlertBanner}
+      {slideFeaturesDrawer}
       <div className="min-h-screen bg-zinc-950">
         {/* Topbar */}
         <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-14 sm:h-16">
+              {/* Left: Slide Features Hamburger Toggle + Logo (No "Menu & Categories" text) */}
               <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-                <img src="/images/afodable-bites-logo.jpg" alt="Afoodable Bites" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-amber-500/40 flex-shrink-0"
-                  onError={e => { e.currentTarget.src = '/logo.jpg'; }} />
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-1.5">
-                    <span className="text-white font-black text-sm sm:text-lg leading-tight truncate">Afoodable Bites</span>
-                    <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 animate-pulse flex-shrink-0" />
-                  </div>
-                  <span className="text-amber-400 text-[10px] sm:text-xs font-semibold block leading-none">Admin Dashboard</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSlideDrawerOpen(true)}
+                  className="p-1.5 sm:p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 rounded-xl transition active:scale-95 flex-shrink-0 shadow-sm"
+                  title="Open Slide Features & All Sections"
+                  aria-label="Open slide menu"
+                >
+                  <Menu className="w-5 h-5 text-amber-400" />
+                </button>
+
+                <img
+                  src="/images/afodable-bites-logo.jpg"
+                  alt="Admin Logo"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-amber-500/40 flex-shrink-0"
+                  onError={e => { e.currentTarget.src = '/logo.jpg'; }}
+                />
               </div>
+
+              {/* Right: Sound Alert + Logout */}
               <div className="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
                 <button
                   type="button"
@@ -809,200 +1249,11 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8">
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-          {[
-            { 
-              label: 'Customer Orders', 
-              value: orders.length, 
-              icon: ShoppingBag, 
-              color: 'from-amber-500 to-orange-600',
-              badge: orders.filter(o => o.status === 'pending').length > 0 
-                ? `${orders.filter(o => o.status === 'pending').length} New` 
-                : undefined
-            },
-            { 
-              label: 'Total Revenue', 
-              value: `₱${totalRevenue.toLocaleString()}`, 
-              icon: TrendingUp, 
-              color: 'from-emerald-500 to-green-600' 
-            },
-            { 
-              label: 'Unique Customers', 
-              value: totalCustomersCount, 
-              icon: Users, 
-              color: 'from-blue-500 to-indigo-600' 
-            },
-            { 
-              label: 'Menu Items', 
-              value: totalItems, 
-              icon: Package, 
-              color: 'from-orange-500 to-red-500' 
-            },
-          ].map(({ label, value, icon: Icon, color, badge }) => (
-            <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-5 flex items-center space-x-2.5 sm:space-x-4 min-w-0 shadow-sm">
-              <div className={`bg-gradient-to-br ${color} p-2 sm:p-3 rounded-xl shadow-lg flex-shrink-0`}>
-                <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center space-x-1">
-                  <p className="text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider truncate">{label}</p>
-                  {badge && (
-                    <span className="text-[9px] sm:text-[10px] font-black bg-amber-500 text-black px-1.5 py-0.2 rounded-full animate-pulse flex-shrink-0">
-                      {badge}
-                    </span>
-                  )}
-                </div>
-                <p className="text-base sm:text-2xl font-black text-white mt-0.5 truncate">{value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Quick Actions + Categories Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {/* Quick Actions */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6">
-            <h3 className="text-sm sm:text-base font-bold text-white mb-3 sm:mb-4 flex items-center space-x-2">
-              <Sparkles className="w-4 h-4 text-amber-400" /><span>Quick Actions</span>
-            </h3>
-            <div className="space-y-1 sm:space-y-1">
-              {[
-                { 
-                  label: 'Customer Orders', 
-                  icon: ShoppingBag, 
-                  action: () => setCurrentView('orders'), 
-                  highlight: true,
-                  badge: orders.filter(o => o.status === 'pending').length > 0 
-                    ? `${orders.filter(o => o.status === 'pending').length} Pending` 
-                    : `${orders.length} Total`
-                },
-                { 
-                  label: 'Sales & Business Analytics', 
-                  icon: BarChart3, 
-                  action: () => setCurrentView('analytics'), 
-                  highlight: true,
-                  badge: 'Reports'
-                },
-                { 
-                  label: 'Customer Directory & Records', 
-                  icon: Users, 
-                  action: () => setCurrentView('customers'), 
-                  highlight: false,
-                  badge: `${totalCustomersCount} Contacts`
-                },
-                { 
-                  label: 'Upsell & Cross-sell Offers', 
-                  icon: Flame, 
-                  action: () => setCurrentView('upsells'), 
-                  highlight: false 
-                },
-                { label: 'Add New Menu Item', icon: Plus, action: handleAddItem, highlight: false },
-                { label: 'Manage Menu Items', icon: Package, action: () => setCurrentView('items'), highlight: false },
-                { label: 'Welcome Page & Promo Slides', icon: Sparkles, action: () => setCurrentView('welcome'), highlight: false },
-                { label: 'Manage Categories', icon: FolderOpen, action: () => setCurrentView('categories'), highlight: false },
-                { label: 'Payment Methods & COD', icon: CreditCard, action: () => setCurrentView('payments'), highlight: false },
-                { label: 'Site Settings', icon: Settings, action: () => setCurrentView('settings'), highlight: false },
-              ].map(({ label, icon: Icon, action, highlight, badge }) => (
-                <button key={label} onClick={action}
-                  className={`w-full flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-left transition-all active:scale-[0.99] ${
-                    highlight
-                      ? 'bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 shadow-sm'
-                      : 'hover:bg-zinc-800'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-                    <Icon className={`h-4 w-4 flex-shrink-0 ${highlight ? 'text-amber-400' : 'text-zinc-500'}`} />
-                    <span className={`text-xs sm:text-sm font-medium ${highlight ? 'text-amber-300 font-bold' : 'text-zinc-300'}`}>{label}</span>
-                  </div>
-                  {badge && (
-                    <span className="text-[10px] sm:text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
-                      {badge}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category Overview */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6">
-            <h3 className="text-sm sm:text-base font-bold text-white mb-3 sm:mb-4 flex items-center space-x-2">
-              <FolderOpen className="w-4 h-4 text-amber-400" /><span>Categories Overview</span>
-            </h3>
-            <div className="space-y-2 sm:space-y-3">
-              {categoryCounts.map(cat => (
-                <div key={cat.id} className="flex items-center justify-between py-1.5 sm:py-2 border-b border-zinc-800 last:border-0">
-                  <div className="flex items-center space-x-2 sm:space-x-2.5">
-                    <span className="text-lg sm:text-xl">{cat.icon}</span>
-                    <span className="text-xs sm:text-sm font-medium text-zinc-300">{cat.name}</span>
-                  </div>
-                  <span className="text-[10px] sm:text-xs font-bold text-amber-400 bg-amber-500/10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full">{cat.count} items</span>
-                </div>
-              ))}
-              {categoryCounts.length === 0 && (
-                <p className="text-zinc-500 text-xs sm:text-sm text-center py-4">No categories yet.</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* All Menu Items Preview */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-zinc-800 flex items-center justify-between">
-            <h3 className="text-sm sm:text-base font-bold text-white">All Menu Items ({totalItems})</h3>
-            <button onClick={() => setCurrentView('items')} className="text-xs font-bold text-amber-400 hover:text-amber-300 transition">
-              Manage All →
-            </button>
-          </div>
-          <div className="divide-y divide-zinc-800">
-            {menuItems.map(item => {
-              const cat = categories.find(c => c.id === item.category);
-              return (
-                <div key={item.id} className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-zinc-800/40 transition gap-2">
-                  <div className="flex items-center space-x-2.5 sm:space-x-3 flex-1 min-w-0">
-                    <span className="text-lg sm:text-xl flex-shrink-0">{cat?.icon || '🍽️'}</span>
-                    <div className="min-w-0">
-                      <div className="flex items-center space-x-1.5 sm:space-x-2 flex-wrap gap-1">
-                        <span className="font-semibold text-white text-xs sm:text-sm truncate">{item.name}</span>
-                        {item.popular && <span className="text-[9px] sm:text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full">⭐ Popular</span>}
-                        {!item.available && <span className="text-[9px] sm:text-xs bg-red-900/50 text-red-400 border border-red-800 px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full">Unavailable</span>}
-                      </div>
-                      <p className="text-[11px] sm:text-xs text-zinc-500 truncate">{cat?.name} · {item.variations?.length || 0} var · {item.addOns?.length || 0} add-ons</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
-                    <div className="text-right">
-                      {item.isOnDiscount && item.discountPrice ? (
-                        <div>
-                          <div className="text-orange-400 font-bold text-xs sm:text-sm">₱{item.discountPrice}</div>
-                          <div className="text-zinc-600 line-through text-[10px] sm:text-xs">₱{item.basePrice}</div>
-                        </div>
-                      ) : (
-                        <span className="text-white font-bold text-xs sm:text-sm">₱{item.basePrice}</span>
-                      )}
-                    </div>
-                    <div className="flex space-x-0.5 sm:space-x-1">
-                      <button onClick={() => handleEditItem(item)} title="Edit" className="p-1.5 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                      <button onClick={() => handleDeleteItem(item.id)} title="Delete" className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {menuItems.length === 0 && (
-            <div className="py-12 text-center">
-              <Package className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
-              <p className="text-zinc-500 text-sm">No menu items yet.</p>
-              <PrimaryBtn onClick={handleAddItem} className="mt-4"><Plus className="h-4 w-4" /><span>Add First Item</span></PrimaryBtn>
-            </div>
-          )}
+        {/* Screen Content: Analytics only! */}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <AnalyticsManager embedded={true} />
         </div>
       </div>
-    </div>
     </>
   );
 };

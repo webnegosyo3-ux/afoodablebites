@@ -16,7 +16,8 @@ import {
   Calendar,
   Flame,
   Clock,
-  Sliders
+  Sliders,
+  Menu
 } from 'lucide-react';
 import { useWelcomePage } from '../hooks/useWelcomePage';
 import { useImageUpload } from '../hooks/useImageUpload';
@@ -24,6 +25,7 @@ import { WelcomeSlide } from '../types';
 
 interface WelcomePageManagerProps {
   onBack: () => void;
+  onOpenSlideMenu?: () => void;
 }
 
 const BADGE_COLOR_OPTIONS = [
@@ -37,7 +39,7 @@ const BADGE_COLOR_OPTIONS = [
   { label: 'Bright Yellow', value: 'bg-yellow-400 text-black' }
 ];
 
-const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
+const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack, onOpenSlideMenu }) => {
   const { 
     config, 
     updateConfig, 
@@ -219,56 +221,68 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       {/* Top Navbar */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
+      <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-1.5 sm:gap-3">
+            <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0 flex-1">
+              {onOpenSlideMenu && (
+                <button
+                  type="button"
+                  onClick={onOpenSlideMenu}
+                  className="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 text-amber-500 border border-gray-300 rounded-xl transition active:scale-95 flex-shrink-0"
+                  title="Open Navigation Menu"
+                  aria-label="Open slide menu"
+                >
+                  <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onBack}
-                className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors duration-200"
+                className="flex items-center space-x-1 text-gray-600 hover:text-black transition text-xs sm:text-sm font-medium flex-shrink-0"
+                title="Back to Dashboard"
               >
-                <ArrowLeft className="h-5 w-5" />
-                <span className="font-medium">Dashboard</span>
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden xs:inline sm:inline">Dashboard</span>
               </button>
-              <div className="h-6 w-px bg-gray-200" />
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-amber-500" />
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  Welcome Page & Promo Slides
+              <div className="h-4 sm:h-5 w-px bg-gray-300 flex-shrink-0" />
+              <div className="flex items-center space-x-1.5 min-w-0">
+                <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <h1 className="text-xs sm:text-base md:text-lg font-bold text-gray-900 truncate whitespace-nowrap">
+                  Welcome Slides
                 </h1>
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
               <button
                 type="button"
                 onClick={handleReset}
-                className="px-3.5 py-2 text-xs sm:text-sm font-semibold text-gray-600 hover:text-red-600 bg-gray-100 hover:bg-red-50 rounded-lg transition-all flex items-center space-x-1.5"
+                className="p-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-gray-600 hover:text-red-600 bg-gray-100 hover:bg-red-50 border border-gray-200 rounded-xl transition-all flex items-center space-x-1 flex-shrink-0"
                 title="Reset to default slides"
               >
-                <RotateCcw className="w-4 h-4" />
-                <span className="hidden sm:inline">Reset Defaults</span>
+                <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden md:inline">Reset Defaults</span>
               </button>
               <button
                 type="button"
                 onClick={handleOpenAddSlide}
-                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs sm:text-sm font-bold rounded-lg hover:from-amber-600 hover:to-orange-600 shadow-md transition-all flex items-center space-x-1.5"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs sm:text-sm font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 shadow-sm transition-all flex items-center space-x-1 flex-shrink-0 whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
-                <span>Add Promo Slide</span>
+                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Add Slide</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-8">
         {/* Section 1: General Welcome Settings */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center space-x-2">
                 <Sliders className="w-5 h-5 text-orange-500" />
                 <span>Display & Transition Settings</span>
               </h2>
@@ -277,14 +291,14 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
               </p>
             </div>
             {generalSaveSuccess && (
-              <span className="flex items-center space-x-1 text-emerald-600 text-xs sm:text-sm font-bold bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+              <span className="flex items-center space-x-1 text-emerald-600 text-xs sm:text-sm font-bold bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 self-start sm:self-auto">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Saved successfully!</span>
               </span>
             )}
           </div>
 
-          <form onSubmit={handleSaveGeneral} className="p-6 space-y-6">
+          <form onSubmit={handleSaveGeneral} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Brand Tagline */}
               <div>
@@ -371,9 +385,9 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
 
         {/* Section 2: Slides Manager */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center space-x-2">
                 <Sparkles className="w-5 h-5 text-amber-500" />
                 <span>Promo Slides ({config.slides.length})</span>
               </h2>
@@ -385,7 +399,7 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
             <button
               type="button"
               onClick={handleOpenAddSlide}
-              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 shadow-md transition-all flex items-center justify-center space-x-2"
+              className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs sm:text-sm font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 shadow-sm transition-all flex items-center justify-center space-x-1.5 self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" />
               <span>Add New Slide</span>
@@ -393,22 +407,24 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
           </div>
 
           {/* Slideshow Image Size Guidelines */}
-          <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 m-5 mb-2 flex items-start space-x-3.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-base flex-shrink-0 shadow-sm">
+          <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-3.5 sm:p-4 m-3 sm:m-5 mb-2 flex items-start space-x-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-sm mt-0.5">
               📐
             </div>
-            <div className="text-xs">
-              <h4 className="font-bold text-amber-950 text-sm flex items-center space-x-2">
-                <span>Required / Recommended Slideshow Image Size</span>
-                <span className="bg-amber-200/80 text-amber-900 text-[10px] px-2 py-0.5 rounded-full font-black">
+            <div className="text-xs min-w-0 flex-1">
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                <h4 className="font-bold text-amber-950 text-xs sm:text-sm">
+                  Recommended Slideshow Image Size
+                </h4>
+                <span className="bg-amber-200/90 text-amber-950 text-[10px] px-2 py-0.5 rounded-full font-black flex-shrink-0">
                   1200 × 800 PX
                 </span>
-              </h4>
-              <p className="text-zinc-700 mt-1">
-                <strong>Resolution:</strong> 1200 × 800 px (o 1920 × 1080 px para sa Full HD). Minimum: 800 × 600 px.
+              </div>
+              <p className="text-zinc-700 mt-1 leading-relaxed">
+                <strong>Resolution:</strong> 1200 × 800 px (o 1920 × 1080 px Full HD). <strong>Ratio:</strong> 16:9 o 4:3 (Landscape).
               </p>
-              <p className="text-zinc-600 mt-0.5">
-                <strong>Aspect Ratio:</strong> 16:9 o 4:3 (Landscape / Pahalang). Siguraduhing nasa gitna ang focus ng pagkain para maganda ang display sa mobile at desktop.
+              <p className="text-zinc-600 mt-0.5 leading-relaxed">
+                Siguraduhing nasa gitna ang focus ng pagkain para maganda ang display sa mobile at desktop.
               </p>
             </div>
           </div>
@@ -418,36 +434,36 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
             {config.slides.map((slide, index) => (
               <div 
                 key={slide.id} 
-                className="p-5 sm:p-6 hover:bg-gray-50/80 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-5"
+                className="p-3.5 sm:p-5 hover:bg-gray-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
               >
-                <div className="flex items-start space-x-4 flex-1 min-w-0">
+                <div className="flex items-start space-x-2.5 sm:space-x-4 flex-1 min-w-0 w-full">
                   {/* Position number & Reorder controls */}
-                  <div className="flex flex-col items-center justify-center space-y-1 pt-1">
+                  <div className="flex flex-col items-center justify-center space-y-0.5 pt-0.5 flex-shrink-0">
                     <button
                       type="button"
                       disabled={index === 0}
                       onClick={() => handleMoveSlide(index, 'up')}
-                      className="p-1 rounded text-gray-400 hover:text-black hover:bg-gray-200 disabled:opacity-20 disabled:hover:bg-transparent"
+                      className="p-1 rounded text-gray-400 hover:text-black hover:bg-gray-200 disabled:opacity-20 transition"
                       title="Move up"
                     >
-                      <MoveUp className="w-4 h-4" />
+                      <MoveUp className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-xs font-black text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">
+                    <span className="text-[10px] font-black text-gray-600 px-1.5 py-0.5 bg-gray-100 rounded-md">
                       #{index + 1}
                     </span>
                     <button
                       type="button"
                       disabled={index === config.slides.length - 1}
                       onClick={() => handleMoveSlide(index, 'down')}
-                      className="p-1 rounded text-gray-400 hover:text-black hover:bg-gray-200 disabled:opacity-20 disabled:hover:bg-transparent"
+                      className="p-1 rounded text-gray-400 hover:text-black hover:bg-gray-200 disabled:opacity-20 transition"
                       title="Move down"
                     >
-                      <MoveDown className="w-4 h-4" />
+                      <MoveDown className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   {/* Thumbnail */}
-                  <div className="w-24 h-20 sm:w-32 sm:h-24 rounded-xl overflow-hidden bg-zinc-900 flex-shrink-0 shadow-sm border border-gray-200 relative group">
+                  <div className="w-20 h-16 sm:w-28 sm:h-20 md:w-32 md:h-24 rounded-xl overflow-hidden bg-zinc-900 flex-shrink-0 shadow-sm border border-gray-200 relative group">
                     <img 
                       src={slide.image} 
                       alt={slide.title} 
@@ -459,52 +475,54 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack }) => {
                     <button
                       type="button"
                       onClick={() => setPreviewSlide(slide)}
-                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold space-x-1"
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] sm:text-xs font-bold space-x-1"
                     >
-                      <Eye className="w-3.5 h-3.5" />
+                      <Eye className="w-3 h-3" />
                       <span>Preview</span>
                     </button>
                   </div>
 
                   {/* Details */}
                   <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${slide.badgeColor}`}>
+                    <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${slide.badgeColor}`}>
                         {slide.badge}
                       </span>
                     </div>
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate">
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900 break-words line-clamp-2">
                       {slide.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
                       {slide.subtitle}
                     </p>
-                    <div className="flex items-center space-x-1 text-xs text-amber-600 font-medium pt-0.5">
-                      <Calendar className="w-3 h-3" />
-                      <span>{slide.tagline}</span>
-                    </div>
+                    {slide.tagline && (
+                      <div className="flex items-center space-x-1 text-[11px] text-amber-600 font-medium pt-0.5">
+                        <Calendar className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{slide.tagline}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center space-x-2 self-end md:self-center">
+                <div className="flex items-center space-x-2 self-end sm:self-center border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end border-gray-100">
                   <button
                     type="button"
                     onClick={() => handleOpenEditSlide(slide)}
-                    className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors flex items-center space-x-1"
+                    className="px-2.5 py-1.5 text-gray-600 hover:text-amber-600 bg-gray-50 hover:bg-amber-50 border border-gray-200 rounded-lg transition-colors flex items-center space-x-1 text-xs font-semibold"
                     title="Edit slide"
                   >
-                    <Edit className="w-4 h-4" />
-                    <span className="text-xs font-semibold sm:inline hidden">Edit</span>
+                    <Edit className="w-3.5 h-3.5" />
+                    <span>Edit</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDeleteSlide(slide.id, slide.title)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center space-x-1"
+                    className="px-2.5 py-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 border border-gray-200 rounded-lg transition-colors flex items-center space-x-1 text-xs font-semibold"
                     title="Delete slide"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    <span className="text-xs font-semibold sm:inline hidden">Delete</span>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>

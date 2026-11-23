@@ -12,20 +12,22 @@ import {
   QrCode, 
   Power,
   Flame,
-  AlertCircle
+  AlertCircle,
+  Menu
 } from 'lucide-react';
 import { usePaymentMethods, PaymentMethod } from '../hooks/usePaymentMethods';
 import ImageUpload from './ImageUpload';
 
 interface PaymentMethodManagerProps {
   onBack: () => void;
+  onOpenSlideMenu?: () => void;
 }
 
 const inputCls =
   'w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition';
 const labelCls = 'block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5';
 
-const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) => {
+const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack, onOpenSlideMenu }) => {
   const { 
     paymentMethods, 
     addPaymentMethod, 
@@ -284,22 +286,33 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
     <div className="min-h-screen bg-zinc-950 text-white pb-16">
       {/* Top Navbar */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              {onOpenSlideMenu && (
+                <button
+                  type="button"
+                  onClick={onOpenSlideMenu}
+                  className="p-1.5 sm:p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 rounded-xl transition active:scale-95 flex-shrink-0"
+                  title="Open Navigation Menu"
+                  aria-label="Open slide menu"
+                >
+                  <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onBack}
-                className="flex items-center space-x-1.5 text-zinc-400 hover:text-amber-400 transition text-sm font-medium"
+                className="flex items-center space-x-1 text-zinc-400 hover:text-amber-400 transition text-xs sm:text-sm font-medium flex-shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Dashboard</span>
+                <span className="hidden sm:inline">Dashboard</span>
               </button>
               <span className="text-zinc-700">|</span>
-              <div className="flex items-center space-x-2">
-                <CreditCard className="w-5 h-5 text-amber-500" />
-                <h1 className="text-lg sm:text-xl font-bold text-white">
-                  Payment Methods & COD
+              <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
+                <h1 className="text-sm sm:text-xl font-bold text-white truncate">
+                  Payment Methods
                 </h1>
               </div>
             </div>
@@ -307,16 +320,16 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onBack }) =
             <button
               type="button"
               onClick={handleAddMethod}
-              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs sm:text-sm font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 shadow transition flex items-center space-x-1.5"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs sm:text-sm font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 shadow transition flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Method</span>
+              <span>Add</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-4 sm:space-y-6">
         
         {/* Special Featured Banner: Cash on Delivery (COD) Toggle */}
         <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-amber-950/40 border-2 border-amber-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden">

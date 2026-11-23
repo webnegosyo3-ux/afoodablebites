@@ -61,30 +61,32 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
   };
 
   return (
-    <section id={category.id} className="mb-10 sm:mb-12 scroll-mt-24">
+    <section id={category.id} className="mb-10 sm:mb-12 scroll-mt-36">
       {/* Category Header with Title & Left/Right Swipe Controls */}
-      <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-amber-400">
-        <div className="flex items-center space-x-2.5">
-          <span className="text-2xl sm:text-3xl">{category.icon}</span>
-          <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">
-            {category.name}
-          </h2>
-          <span className="text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2.5 py-0.5 rounded-full shadow-sm">
-            {items.length} {items.length === 1 ? 'item' : 'items'}
-          </span>
+      <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-amber-400 gap-2">
+        <div className="flex items-center space-x-2 min-w-0 flex-1">
+          <span className="text-xl sm:text-3xl flex-shrink-0">{category.icon}</span>
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 min-w-0">
+            <h2 className="text-base sm:text-2xl font-black text-zinc-900 tracking-tight break-words">
+              {category.name}
+            </h2>
+            <span className="text-[11px] sm:text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap flex-shrink-0">
+              {items.length} {items.length === 1 ? 'item' : 'items'}
+            </span>
+          </div>
         </div>
 
         {/* Navigation Arrows */}
-        <div className="flex items-center space-x-1.5">
+        <div className="flex items-center space-x-1.5 flex-shrink-0">
           <button
             type="button"
             onClick={() => scroll('left')}
             disabled={!canScrollLeft}
             aria-label="Scroll left"
-            className={`p-2 rounded-full border transition-all duration-200 active:scale-90 ${
+            className={`p-1.5 sm:p-2 rounded-full border transition-all duration-200 active:scale-90 ${
               canScrollLeft
                 ? 'bg-white text-zinc-800 border-zinc-300 hover:bg-amber-500 hover:text-white hover:border-amber-500 shadow-sm'
-                : 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed opacity-50'
+                : 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed opacity-40'
             }`}
           >
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -94,10 +96,10 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
             onClick={() => scroll('right')}
             disabled={!canScrollRight}
             aria-label="Scroll right"
-            className={`p-2 rounded-full border transition-all duration-200 active:scale-90 ${
+            className={`p-1.5 sm:p-2 rounded-full border transition-all duration-200 active:scale-90 ${
               canScrollRight
                 ? 'bg-white text-zinc-800 border-zinc-300 hover:bg-amber-500 hover:text-white hover:border-amber-500 shadow-sm'
-                : 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed opacity-50'
+                : 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed opacity-40'
             }`}
           >
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />

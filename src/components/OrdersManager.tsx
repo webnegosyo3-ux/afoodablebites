@@ -15,7 +15,8 @@ import {
   ChevronDown,
   RotateCcw,
   Bell,
-  BellOff
+  BellOff,
+  Menu
 } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
 import { AdminOrder, OrderStatus } from '../types';
@@ -28,6 +29,7 @@ import {
 
 interface OrdersManagerProps {
   onBack: () => void;
+  onOpenSlideMenu?: () => void;
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; bg: string; text: string; border: string; icon: any }> = {
@@ -61,7 +63,7 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; bg: string; text: stri
   }
 };
 
-const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
+const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }) => {
   const { orders, updateOrderStatus, deleteOrder, clearAllOrders } = useOrders();
   const [filterStatus, setFilterStatus] = useState<'all' | OrderStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -125,34 +127,45 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
     <div className="min-h-screen bg-zinc-950 text-white pb-16">
       {/* Top Navbar */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              {onOpenSlideMenu && (
+                <button
+                  type="button"
+                  onClick={onOpenSlideMenu}
+                  className="p-1.5 sm:p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 rounded-xl transition active:scale-95 flex-shrink-0"
+                  title="Open Navigation Menu"
+                  aria-label="Open slide menu"
+                >
+                  <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onBack}
-                className="flex items-center space-x-1.5 text-zinc-400 hover:text-amber-400 transition text-sm font-medium"
+                className="flex items-center space-x-1 text-zinc-400 hover:text-amber-400 transition text-xs sm:text-sm font-medium flex-shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Dashboard</span>
+                <span className="hidden sm:inline">Dashboard</span>
               </button>
               <span className="text-zinc-700">|</span>
-              <div className="flex items-center space-x-2">
-                <ShoppingBag className="w-5 h-5 text-amber-500" />
-                <h1 className="text-lg sm:text-xl font-bold text-white">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
+                <h1 className="text-sm sm:text-xl font-bold text-white truncate">
                   Customer Orders
                 </h1>
-                <span className="text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] sm:text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
                   {orders.length}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
               <button
                 type="button"
                 onClick={handleToggleSound}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center space-x-1 sm:space-x-1.5 ${
                   soundEnabled
                     ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
                     : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
@@ -160,14 +173,14 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
                 title={soundEnabled ? 'Mute Ringtone' : 'Enable Ringtone'}
               >
                 {soundEnabled ? <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" /> : <BellOff className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">{soundEnabled ? 'Ring Alerts: ON' : 'Ring: MUTED'}</span>
+                <span className="hidden sm:inline">{soundEnabled ? 'Ring: ON' : 'Ring: MUTED'}</span>
               </button>
 
               {orders.length > 0 && (
                 <button
                   type="button"
                   onClick={handleClearAll}
-                  className="px-3 py-2 border border-zinc-800 hover:border-red-500/40 text-zinc-400 hover:text-red-400 rounded-xl text-xs font-semibold transition"
+                  className="px-2.5 sm:px-3 py-1.5 border border-zinc-800 hover:border-red-500/40 text-zinc-400 hover:text-red-400 rounded-xl text-xs font-semibold transition"
                   title="Clear all orders"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -178,7 +191,7 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-4 sm:space-y-6">
         
         {/* Live Audio Alerts & Direct Dashboard Order Info Banner */}
         <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-amber-950/40 border border-zinc-800 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

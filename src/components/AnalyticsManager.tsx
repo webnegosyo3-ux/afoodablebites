@@ -16,19 +16,22 @@ import {
   Coffee,
   PieChart,
   BarChart3,
-  RefreshCw
+  RefreshCw,
+  Menu
 } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
 import { useMenu } from '../hooks/useMenu';
 import { AdminOrder } from '../types';
 
 interface AnalyticsManagerProps {
-  onBack: () => void;
+  onBack?: () => void;
+  embedded?: boolean;
+  onOpenSlideMenu?: () => void;
 }
 
 type TimeRange = 'all' | 'today' | 'week' | 'month';
 
-const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ onBack }) => {
+const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ onBack, embedded = false, onOpenSlideMenu }) => {
   const { orders, refetch, loading } = useOrders();
   const { menuItems } = useMenu();
   const [timeRange, setTimeRange] = useState<TimeRange>('all');
@@ -156,76 +159,140 @@ const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ onBack }) => {
   }, [filteredOrders, orders]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white pb-16">
-      {/* Top Navbar */}
-      <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <button
-                type="button"
-                onClick={onBack}
-                className="flex items-center space-x-1.5 text-zinc-400 hover:text-amber-400 transition text-sm font-medium"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Dashboard</span>
-              </button>
-              <span className="text-zinc-700">|</span>
-              <div className="flex items-center space-x-2">
-                <BarChart3 className="w-5 h-5 text-amber-500" />
-                <h1 className="text-lg sm:text-xl font-bold text-white">
-                  Sales & Business Analytics
-                </h1>
-              </div>
+    <div className={embedded ? 'text-white space-y-6' : 'min-h-screen bg-zinc-950 text-white pb-16'}>
+      {/* Top Navbar or Embedded Header Bar */}
+      {embedded ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+          <div className="flex items-center space-x-2">
+            <BarChart3 className="w-5 h-5 text-amber-500" />
+            <h2 className="text-base sm:text-lg font-black text-white">
+              Sales & Business Analytics
+            </h2>
+          </div>
+          <div className="flex items-center space-x-2 flex-wrap gap-2">
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing || loading}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-bold border border-zinc-700 transition disabled:opacity-60 shadow-sm active:scale-95"
+              title="Refresh Analytics Data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isRefreshing || loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+
+            {/* Time Range Filter Pills */}
+            <div className="flex items-center space-x-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+              {(
+                [
+                  { id: 'all', label: 'All Time' },
+                  { id: 'month', label: 'Month' },
+                  { id: 'week', label: 'Week' },
+                  { id: 'today', label: 'Today' }
+                ] as const
+              ).map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTimeRange(t.id)}
+                  className={`px-2 sm:px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                    timeRange === t.id
+                      ? 'bg-amber-500 text-black shadow'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
-
-            <div className="flex items-center space-x-2">
-              {/* Refresh Button */}
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing || loading}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs font-bold border border-zinc-700 transition disabled:opacity-60 shadow-sm active:scale-95"
-                title="Refresh Analytics Data"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isRefreshing || loading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-              </button>
-
-              {/* Time Range Filter Pills */}
-              <div className="flex items-center space-x-1 bg-zinc-800 p-1 rounded-xl border border-zinc-700">
-                {(
-                  [
-                    { id: 'all', label: 'All Time' },
-                    { id: 'month', label: 'This Month' },
-                    { id: 'week', label: 'This Week' },
-                    { id: 'today', label: 'Today' }
-                  ] as const
-                ).map(t => (
+          </div>
+        </div>
+      ) : (
+        <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+              <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                {onOpenSlideMenu && (
                   <button
-                    key={t.id}
                     type="button"
-                    onClick={() => setTimeRange(t.id)}
-                    className={`px-2.5 sm:px-3 py-1 text-xs font-bold rounded-lg transition ${
-                      timeRange === t.id
-                        ? 'bg-amber-500 text-black shadow'
-                        : 'text-zinc-400 hover:text-white'
-                    }`}
+                    onClick={onOpenSlideMenu}
+                    className="p-1.5 sm:p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 rounded-xl transition active:scale-95 flex-shrink-0"
+                    title="Open Navigation Menu"
+                    aria-label="Open slide menu"
                   >
-                    {t.label}
+                    <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
                   </button>
-                ))}
+                )}
+                {onBack && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onBack}
+                      className="flex items-center space-x-1 text-zinc-400 hover:text-amber-400 transition text-xs sm:text-sm font-medium flex-shrink-0"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Dashboard</span>
+                    </button>
+                    <span className="text-zinc-700">|</span>
+                  </>
+                )}
+                <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+                  <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
+                  <h1 className="text-sm sm:text-xl font-bold text-white truncate">
+                    Analytics
+                  </h1>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
+                {/* Refresh Button */}
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing || loading}
+                  className="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs font-bold border border-zinc-700 transition disabled:opacity-60 shadow-sm active:scale-95"
+                  title="Refresh Analytics Data"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isRefreshing || loading ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+                </button>
+
+                {/* Time Range Filter Pills */}
+                <div className="flex items-center space-x-0.5 sm:space-x-1 bg-zinc-800 p-1 rounded-xl border border-zinc-700 overflow-x-auto max-w-[180px] xs:max-w-none scrollbar-none">
+                  {(
+                    [
+                      { id: 'all', label: 'All' },
+                      { id: 'month', label: 'Month' },
+                      { id: 'week', label: 'Week' },
+                      { id: 'today', label: 'Today' }
+                    ] as const
+                  ).map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTimeRange(t.id)}
+                      className={`px-2 sm:px-3 py-1 text-xs font-bold rounded-lg transition whitespace-nowrap ${
+                        timeRange === t.id
+                          ? 'bg-amber-500 text-black shadow'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className={embedded ? 'space-y-4 sm:space-y-6' : 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8'}>
         {/* KPI Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {/* Total Revenue */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6 relative overflow-hidden shadow-lg">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 relative overflow-hidden shadow-lg">
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl" />
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Total Revenue</span>

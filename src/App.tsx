@@ -44,6 +44,11 @@ function MainApp() {
         onCartClick={() => handleViewChange('cart')}
         onMenuClick={() => handleViewChange('menu')}
         onHomeClick={() => handleViewChange('welcome')}
+        selectedCategory={selectedCategory}
+        onCategoryClick={(catId) => {
+          handleCategoryClick(catId);
+          if (currentView !== 'menu') handleViewChange('menu');
+        }}
       />
 
       {/* Menu View (Header Section + All Menus) */}

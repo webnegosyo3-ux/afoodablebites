@@ -698,111 +698,29 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
         </div>
       </div>
 
-      {/* POP-UP MESSAGE: ORDER CONFIRMED MODAL */}
-      {showSuccessModal && placedOrder && (
+      {/* POP-UP MESSAGE: ORDER SENT MODAL */}
+      {showSuccessModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border-2 border-amber-400 text-center relative overflow-hidden animate-scale-up">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 sm:p-8 shadow-2xl border-2 border-amber-400 text-center relative overflow-hidden animate-scale-up">
             {/* Top decorative banner */}
             <div className="absolute top-0 left-0 right-0 h-2.5 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
 
             {/* Glowing Success Badge */}
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-1 shadow-xl flex items-center justify-center">
+            <div className="w-20 h-20 mx-auto my-3 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-1 shadow-xl flex items-center justify-center">
               <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
                 <span className="text-4xl animate-bounce">🎉</span>
               </div>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight mb-1">
-              Order Confirmed!
+            <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight my-4">
+              Congrats, your order is sent!
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-600 font-medium mb-6">
-              Salamat, <strong className="text-zinc-900">{placedOrder.customerName}</strong>! Natanggap na ang iyong order sa aming kusina.
-            </p>
-
-            {/* Order Summary Snapshot */}
-            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3.5 text-left text-xs space-y-1.5 mb-5">
-              <div className="flex justify-between py-1 border-b border-zinc-200 font-bold text-zinc-800">
-                <span>Service Type:</span>
-                <span className="capitalize text-amber-600">{placedOrder.serviceType}</span>
-              </div>
-              {placedOrder.address && (
-                <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
-                  <span>Address:</span>
-                  <span className="font-medium text-right max-w-[200px] truncate">{placedOrder.address}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-center py-1 border-b border-zinc-200 text-zinc-700">
-                <span>Payment:</span>
-                <div className="flex items-center space-x-2">
-                  <span className="font-semibold">{placedOrder.paymentMethod}</span>
-                  {!isCod && (
-                    <button
-                      type="button"
-                      onClick={() => setShowQrModal(true)}
-                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg flex items-center space-x-1 transition"
-                    >
-                      <QrCode className="w-3 h-3" />
-                      <span>View QR</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-              {placedOrder.paymentSenderName && (
-                <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
-                  <span>Sender Account:</span>
-                  <span className="font-semibold text-zinc-900">{placedOrder.paymentSenderName}</span>
-                </div>
-              )}
-              {placedOrder.paymentReferenceNumber && (
-                <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
-                  <span>Reference No:</span>
-                  <span className="font-mono font-bold text-amber-600">{placedOrder.paymentReferenceNumber}</span>
-                </div>
-              )}
-              <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
-                <span>Items:</span>
-                <span className="font-semibold">{placedOrder.items.reduce((sum, item) => sum + item.quantity, 0)} items</span>
-              </div>
-              <div className="flex justify-between pt-1 text-sm font-black text-zinc-900">
-                <span>Total Amount:</span>
-                <span className="text-amber-600">₱{placedOrder.total}</span>
-              </div>
-            </div>
-
-            {/* View QR Code button in Confirmation Modal */}
-            {!isCod && (
-              <button
-                type="button"
-                onClick={() => setShowQrModal(true)}
-                className="w-full py-2.5 mb-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 transition shadow-sm"
-              >
-                <QrCode className="w-4 h-4 text-blue-600" />
-                <span>View QR Code & Account Details</span>
-              </button>
-            )}
-
-            {/* Cooking Notification */}
-            <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 border border-orange-200 rounded-xl p-3 mb-4">
-              <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-orange-950 mb-1">
-                <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
-                <span>Papasok na sa Kusina & Admin Dashboard!</span>
-              </div>
-              <p className="text-[11px] text-zinc-600">
-                ⏱️ Estimated Preparation: <strong>15 - 25 minutes</strong>. Laging luto at mainit! 🔥
-              </p>
-            </div>
-
-            {/* Automatic Return Countdown */}
-            <div className="flex items-center justify-center space-x-2 text-xs text-amber-900 bg-amber-50 border border-amber-200/80 rounded-xl py-2 px-3 mb-4">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block" />
-              <span>Awtomatikong babalik sa main sa loob ng <strong>{countdown}s</strong>...</span>
-            </div>
 
             {/* Back to Main Button */}
             <button
               type="button"
               onClick={handleFinishOrder}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl font-black text-sm sm:text-base hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md flex items-center justify-center space-x-2"
+              className="w-full mt-2 py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl font-black text-sm sm:text-base hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md flex items-center justify-center space-x-2"
             >
               <span>Bumalik sa Main Page</span>
               <span>🏠</span>
@@ -811,33 +729,30 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
         </div>
       )}
 
-      {/* POP-UP MODAL: ENLARGED VIEW QR CODE */}
+      {/* POP-UP MODAL: ENLARGED VIEW QR CODE (QR CODE ONLY) */}
       {showQrModal && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm sm:max-w-md w-full p-6 sm:p-7 shadow-2xl border-2 border-blue-400 text-center relative overflow-hidden animate-scale-up">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 mb-4">
-              <div className="flex items-center space-x-2 text-left">
-                <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
-                  <QrCode className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-zinc-900 text-base leading-tight">
-                    {currentMethod?.name || 'Payment QR Code'}
-                  </h3>
-                  <p className="text-xs text-zinc-500">Scan to pay with GCash / E-Wallet</p>
-                </div>
-              </div>
+        <div 
+          className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in"
+          onClick={() => setShowQrModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-4 sm:p-6 shadow-2xl border-2 border-blue-400 text-center relative max-w-sm w-full animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <div className="flex justify-end mb-2">
               <button
                 type="button"
                 onClick={() => setShowQrModal(false)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition"
+                className="p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-full transition"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Large High-Contrast QR */}
-            <div className="w-64 h-64 sm:w-72 sm:h-72 mx-auto rounded-2xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-2.5 flex items-center justify-center mb-4">
+            {/* QR Code Image Only */}
+            <div className="w-full aspect-square max-w-[280px] sm:max-w-[320px] mx-auto rounded-2xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-2 flex items-center justify-center">
               <img
                 src={(currentMethod?.qr_code_url && currentMethod.qr_code_url.trim()) || '/images/payment-qr/gcash-qr-code.jpg'}
                 alt={`${currentMethod?.name || 'Payment'} QR Code`}
@@ -851,51 +766,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                 }}
               />
             </div>
-
-            {/* Account Details Box */}
-            <div className="bg-zinc-50 rounded-xl p-3.5 space-y-2 text-xs sm:text-sm border border-zinc-200 text-left mb-4">
-              <div className="flex justify-between items-center py-1 border-b border-zinc-200">
-                <span className="text-zinc-500 font-medium">Account Number:</span>
-                <div className="flex items-center space-x-2">
-                  <span className="font-mono font-black text-zinc-900 text-sm sm:text-base">
-                    {currentMethod?.account_number || '0905 293 1408'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => copyAccountNumber(currentMethod?.account_number || '0905 293 1408')}
-                    className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition"
-                    title="Copy Account Number"
-                  >
-                    {copiedAccount ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              {copiedAccount && (
-                <p className="text-[11px] text-emerald-600 font-bold text-right -mt-1">
-                  Copied to clipboard!
-                </p>
-              )}
-              <div className="flex justify-between items-center py-1 border-b border-zinc-200">
-                <span className="text-zinc-500 font-medium">Account Name:</span>
-                <span className="font-bold text-zinc-900">
-                  {currentMethod?.account_name || 'Afoodable Bites'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-zinc-500 font-medium">Amount to Pay:</span>
-                <span className="font-black text-amber-600 text-sm sm:text-base">
-                  ₱{totalPrice}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowQrModal(false)}
-              className="w-full py-3 bg-zinc-900 hover:bg-black text-white rounded-xl font-bold text-sm transition"
-            >
-              Done / Close
-            </button>
           </div>
         </div>
       )}

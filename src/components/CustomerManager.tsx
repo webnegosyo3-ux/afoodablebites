@@ -13,13 +13,15 @@ import {
   X,
   ExternalLink,
   CreditCard,
-  Truck
+  Truck,
+  Menu
 } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
 import { AdminOrder } from '../types';
 
 interface CustomerManagerProps {
   onBack: () => void;
+  onOpenSlideMenu?: () => void;
 }
 
 interface AggregatedCustomer {
@@ -36,7 +38,7 @@ interface AggregatedCustomer {
   orders: AdminOrder[];
 }
 
-const CustomerManager: React.FC<CustomerManagerProps> = ({ onBack }) => {
+const CustomerManager: React.FC<CustomerManagerProps> = ({ onBack, onOpenSlideMenu }) => {
   const { orders } = useOrders();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'spent' | 'orders' | 'recent' | 'name'>('spent');
@@ -141,24 +143,35 @@ const CustomerManager: React.FC<CustomerManagerProps> = ({ onBack }) => {
     <div className="min-h-screen bg-zinc-950 text-white pb-16">
       {/* Top Navbar */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              {onOpenSlideMenu && (
+                <button
+                  type="button"
+                  onClick={onOpenSlideMenu}
+                  className="p-1.5 sm:p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 rounded-xl transition active:scale-95 flex-shrink-0"
+                  title="Open Navigation Menu"
+                  aria-label="Open slide menu"
+                >
+                  <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onBack}
-                className="flex items-center space-x-1.5 text-zinc-400 hover:text-amber-400 transition text-sm font-medium"
+                className="flex items-center space-x-1 text-zinc-400 hover:text-amber-400 transition text-xs sm:text-sm font-medium flex-shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Dashboard</span>
+                <span className="hidden sm:inline">Dashboard</span>
               </button>
               <span className="text-zinc-700">|</span>
-              <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-amber-500" />
-                <h1 className="text-lg sm:text-xl font-bold text-white">
-                  Customer Directory & Records
+              <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
+                <h1 className="text-sm sm:text-xl font-bold text-white truncate">
+                  Customer Directory
                 </h1>
-                <span className="text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] sm:text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
                   {totalCustomers}
                 </span>
               </div>
@@ -167,7 +180,7 @@ const CustomerManager: React.FC<CustomerManagerProps> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-4 sm:space-y-6">
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">

@@ -10,7 +10,7 @@ const SubNav: React.FC<SubNavProps> = ({ selectedCategory, onCategoryClick }) =>
   const { categories, loading } = useCategories();
 
   return (
-    <div className="sticky top-20 z-40 bg-zinc-900/95 backdrop-blur-md border-b-2 border-amber-500/40 shadow-lg">
+    <div className="sticky top-16 sm:top-20 z-40 bg-zinc-900/95 backdrop-blur-md border-b-2 border-amber-500/40 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-2 sm:space-x-3 overflow-x-auto py-3 scrollbar-hide">
           {loading ? (

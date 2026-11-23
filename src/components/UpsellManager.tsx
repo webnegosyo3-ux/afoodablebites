@@ -11,7 +11,8 @@ import {
   Save, 
   RotateCcw,
   Package,
-  Layers
+  Layers,
+  Menu
 } from 'lucide-react';
 import { useUpsells } from '../hooks/useUpsells';
 import { useMenu } from '../hooks/useMenu';
@@ -20,13 +21,14 @@ import ImageUpload from './ImageUpload';
 
 interface UpsellManagerProps {
   onBack: () => void;
+  onOpenSlideMenu?: () => void;
 }
 
 const inputCls =
   'w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition';
 const labelCls = 'block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5';
 
-const UpsellManager: React.FC<UpsellManagerProps> = ({ onBack }) => {
+const UpsellManager: React.FC<UpsellManagerProps> = ({ onBack, onOpenSlideMenu }) => {
   const { upsells, addUpsell, updateUpsell, deleteUpsell, toggleUpsell, resetToDefault } = useUpsells();
   const { menuItems } = useMenu();
 
@@ -105,44 +107,55 @@ const UpsellManager: React.FC<UpsellManagerProps> = ({ onBack }) => {
     <div className="min-h-screen bg-zinc-950 text-white pb-16">
       {/* Top Navbar */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              {onOpenSlideMenu && (
+                <button
+                  type="button"
+                  onClick={onOpenSlideMenu}
+                  className="p-1.5 sm:p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 rounded-xl transition active:scale-95 flex-shrink-0"
+                  title="Open Navigation Menu"
+                  aria-label="Open slide menu"
+                >
+                  <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onBack}
-                className="flex items-center space-x-1.5 text-zinc-400 hover:text-amber-400 transition text-sm font-medium"
+                className="flex items-center space-x-1 text-zinc-400 hover:text-amber-400 transition text-xs sm:text-sm font-medium flex-shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Dashboard</span>
+                <span className="hidden sm:inline">Dashboard</span>
               </button>
               <span className="text-zinc-700">|</span>
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-amber-500" />
-                <h1 className="text-lg sm:text-xl font-bold text-white">
-                  Upsell & Cross-sell Offers
+              <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
+                <h1 className="text-sm sm:text-xl font-bold text-white truncate">
+                  Upsell Offers
                 </h1>
-                <span className="text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] sm:text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
                   {upsells.filter(u => u.active).length} Active
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               <button
                 type="button"
                 onClick={handleStartAdd}
-                className="inline-flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow hover:scale-105 transition"
+                className="inline-flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow transition"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Upsell Item</span>
+                <span>Add</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-4 sm:space-y-6">
         {/* Intro Banner */}
         <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-red-500/10 border border-amber-500/30 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
