@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Plus, Minus, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Flame, Sparkles } from 'lucide-react';
 import { CartItem } from '../types';
 
 interface CartProps {
@@ -21,18 +21,28 @@ const Cart: React.FC<CartProps> = ({
   onContinueShopping,
   onCheckout
 }) => {
+  const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
   if (cartItems.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <div className="text-center py-16 bg-white rounded-2xl shadow-lg">
-          <div className="text-7xl mb-4">🐔</div>
-          <h2 className="text-3xl font-bold text-chick-dark mb-2">Your cart is empty</h2>
-          <p className="text-chick-brown mb-8">Add some delicious items to get started!</p>
+      <div className="max-w-2xl mx-auto px-4 py-12 sm:py-16">
+        <div className="text-center py-12 sm:py-16 px-6 bg-white rounded-3xl shadow-sm border border-zinc-200">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-3xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center text-4xl sm:text-5xl shadow-inner">
+            🍲
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight mb-2">
+            Your cart is empty
+          </h2>
+          <p className="text-sm text-zinc-500 max-w-sm mx-auto mb-8">
+            Wala pang laman ang iyong cart. Piliin ang inyong paboritong sizzling meals, chicken, at drinks!
+          </p>
           <button
+            type="button"
             onClick={onContinueShopping}
-            className="bg-cart-gradient text-white px-8 py-4 rounded-xl hover:shadow-cart-green transition-all duration-200 font-bold text-lg transform hover:scale-105"
+            className="inline-flex items-center justify-center space-x-2 px-8 py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl font-black text-base shadow-lg hover:shadow-orange-500/30 transition-all duration-200 transform hover:scale-105 active:scale-95"
           >
-            🍗 Browse Menu
+            <Flame className="w-5 h-5 animate-pulse" />
+            <span>Browse Menu</span>
           </button>
         </div>
       </div>
@@ -40,85 +50,144 @@ const Cart: React.FC<CartProps> = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-3xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
+      {/* Top Header Section */}
+      <div className="flex items-center justify-between mb-5 sm:mb-6 pb-3 border-b border-zinc-200/80">
         <button
+          type="button"
           onClick={onContinueShopping}
-          className="flex items-center space-x-2 text-chick-dark hover:text-chick-orange transition-colors duration-200 font-semibold"
+          className="flex items-center space-x-1.5 text-zinc-600 hover:text-black transition-colors font-bold text-xs sm:text-sm active:scale-95"
         >
-          <ArrowLeft className="h-5 w-5" />
-          <span>Continue Shopping</span>
+          <ArrowLeft className="h-4 w-4" />
+          <span>Menu</span>
         </button>
-        <h1 className="text-3xl font-bold text-cart-green">🛒 Your Cart</h1>
+
+        <div className="flex items-center space-x-2">
+          <h1 className="text-lg sm:text-2xl font-black text-zinc-900 tracking-tight flex items-center space-x-1.5">
+            <ShoppingBag className="w-5 h-5 text-amber-500" />
+            <span>Your Cart</span>
+          </h1>
+          <span className="text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
+            {totalItems} {totalItems === 1 ? 'item' : 'items'}
+          </span>
+        </div>
+
         <button
-          onClick={clearCart}
-          className="text-chick-red hover:text-chick-orange transition-colors duration-200 font-semibold"
+          type="button"
+          onClick={() => {
+            if (confirm('Clear all items from your cart?')) {
+              clearCart();
+            }
+          }}
+          className="text-red-500 hover:text-red-700 transition-colors font-bold text-xs sm:text-sm active:scale-95"
         >
           Clear All
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8 border-2 border-chick-beige">
-        {cartItems.map((item, index) => {
-          return (
-            <div key={item.id} className={`p-6 ${index !== cartItems.length - 1 ? 'border-b-2 border-chick-beige' : ''}`}>
-              <div className="flex items-start space-x-4">
-                {/* Variation Image */}
-                {item.selectedVariation?.image && (
-                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                    <img 
-                      src={item.selectedVariation.image} 
-                      alt={item.selectedVariation.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
+      {/* Cart Items List */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-zinc-200 overflow-hidden mb-6 divide-y divide-zinc-100">
+        {cartItems.map((item) => {
+          const itemImage = item.selectedVariation?.image || item.image;
 
+          return (
+            <div
+              key={item.id}
+              className="p-3.5 sm:p-5 hover:bg-zinc-50/50 transition-colors"
+            >
+              <div className="flex items-start space-x-3 sm:space-x-4">
+                {/* Food Thumbnail */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-zinc-100 flex-shrink-0 border border-zinc-200 flex items-center justify-center">
+                  {itemImage ? (
+                    <img
+                      src={itemImage}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/images/afodable-bites-logo.jpg';
+                      }}
+                    />
+                  ) : (
+                    <span className="text-2xl">🍲</span>
+                  )}
+                </div>
+
+                {/* Item Details */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold text-chick-dark mb-1">{item.name}</h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-zinc-900 leading-snug truncate">
+                      {item.name}
+                    </h3>
+
+                    {/* Delete Item Button */}
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(item.id)}
+                      className="p-1 sm:p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                      title="Remove item"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Variation / Flavors */}
                   {item.selectedVariations && item.selectedVariations.length > 0 ? (
-                    <p className="text-sm text-chick-brown mb-1">Flavors: {item.selectedVariations.map(v => v.name).join(' + ')}</p>
+                    <p className="text-[11px] sm:text-xs text-zinc-500 mt-0.5 line-clamp-1">
+                      Flavors: <span className="text-zinc-700 font-semibold">{item.selectedVariations.map(v => v.name).join(' + ')}</span>
+                    </p>
                   ) : item.selectedVariation ? (
-                    <p className="text-sm text-chick-brown mb-1">Flavor: {item.selectedVariation.name}</p>
+                    <p className="text-[11px] sm:text-xs text-zinc-500 mt-0.5 line-clamp-1">
+                      Flavor: <span className="text-zinc-700 font-semibold">{item.selectedVariation.name}</span>
+                    </p>
                   ) : null}
+
+                  {/* Add-ons */}
                   {item.selectedAddOns && item.selectedAddOns.length > 0 && (
-                    <p className="text-sm text-chick-brown mb-1">
-                      ➕ Add-ons: {item.selectedAddOns.map(addOn => 
-                        addOn.quantity && addOn.quantity > 1 
+                    <p className="text-[11px] sm:text-xs text-amber-700 mt-0.5 line-clamp-1 font-medium">
+                      + {item.selectedAddOns.map(addOn =>
+                        addOn.quantity && addOn.quantity > 1
                           ? `${addOn.name} x${addOn.quantity}`
                           : addOn.name
                       ).join(', ')}
                     </p>
                   )}
-                  <p className="text-lg font-bold text-chick-golden">₱{item.totalPrice} each</p>
-                  
-                  <div className="flex items-center space-x-3 mt-3">
-                    <div className="flex items-center space-x-3 bg-chick-beige rounded-xl p-1 border-2 border-chick-golden">
+
+                  {/* Price per item */}
+                  <p className="text-xs text-zinc-400 mt-1">
+                    ₱{item.totalPrice} each
+                  </p>
+
+                  {/* Quantity Stepper & Total Price Row (Mobile & Desktop Aligned) */}
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-zinc-100">
+                    {/* Stepper */}
+                    <div className="flex items-center space-x-1 bg-zinc-100 rounded-xl p-0.5 border border-zinc-200">
                       <button
+                        type="button"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="p-2 hover:bg-chick-golden rounded-lg transition-colors duration-200"
+                        className="p-1 sm:p-1.5 hover:bg-white rounded-lg transition-colors text-zinc-700 active:scale-90"
+                        aria-label="Decrease quantity"
                       >
-                        <Minus className="h-4 w-4 text-chick-dark" />
+                        <Minus className="h-3.5 w-3.5" />
                       </button>
-                      <span className="font-bold text-chick-dark min-w-[32px] text-center">{item.quantity}</span>
+                      <span className="font-black text-zinc-900 min-w-[28px] text-center text-xs sm:text-sm">
+                        {item.quantity}
+                      </span>
                       <button
+                        type="button"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="p-2 hover:bg-chick-golden rounded-lg transition-colors duration-200"
+                        className="p-1 sm:p-1.5 hover:bg-white rounded-lg transition-colors text-zinc-700 active:scale-90"
+                        aria-label="Increase quantity"
                       >
-                        <Plus className="h-4 w-4 text-chick-dark" />
+                        <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    
-                    <div className="text-right flex-1">
-                      <p className="text-lg font-bold text-chick-orange">₱{item.totalPrice * item.quantity}</p>
+
+                    {/* Subtotal */}
+                    <div className="text-right">
+                      <span className="text-base sm:text-lg font-black text-amber-600">
+                        ₱{item.totalPrice * item.quantity}
+                      </span>
                     </div>
-                    
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="p-2 text-chick-red hover:text-white hover:bg-chick-red rounded-full transition-all duration-200"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -127,18 +196,32 @@ const Cart: React.FC<CartProps> = ({
         })}
       </div>
 
-      <div className="bg-chick-warm-gradient rounded-2xl shadow-lg p-8 border-2 border-chick-golden">
-        <div className="flex items-center justify-between text-3xl font-bold mb-6">
-          <span className="text-chick-dark">Total:</span>
-          <span className="text-chick-orange">₱{(getTotalPrice() || 0).toFixed(2)}</span>
+      {/* Checkout Summary Card */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm p-4 sm:p-6 border border-zinc-200 space-y-4">
+        <div className="flex items-center justify-between text-zinc-600 text-xs sm:text-sm">
+          <span>Subtotal ({totalItems} items):</span>
+          <span className="font-bold text-zinc-900">₱{getTotalPrice()}</span>
         </div>
-        
+
+        <div className="border-t border-zinc-200 pt-3 flex items-center justify-between">
+          <span className="text-base sm:text-lg font-bold text-zinc-900">Total:</span>
+          <span className="text-2xl sm:text-3xl font-black text-amber-600">
+            ₱{getTotalPrice()}
+          </span>
+        </div>
+
         <button
+          type="button"
           onClick={onCheckout}
-          className="w-full bg-cart-gradient text-white py-5 rounded-xl hover:shadow-cart-green transition-all duration-200 transform hover:scale-[1.02] font-bold text-xl shadow-lg"
+          className="w-full py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl sm:rounded-2xl font-black text-base sm:text-lg shadow-lg hover:shadow-orange-500/30 transition-all duration-200 transform hover:scale-[1.01] active:scale-95 flex items-center justify-center space-x-2"
         >
-          🚀 Proceed to Checkout
+          <span>Proceed to Checkout</span>
+          <Flame className="w-5 h-5 animate-pulse" />
         </button>
+
+        <p className="text-[11px] text-zinc-400 text-center">
+          Available via Dine In, Pickup, at Cash on Delivery / GCash!
+        </p>
       </div>
     </div>
   );
