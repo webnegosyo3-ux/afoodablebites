@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Check, QrCode } from 'lucide-react';
 import { CartItem, ServiceType, AdminOrder } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useOrders } from '../hooks/useOrders';
@@ -10,6 +10,30 @@ interface CheckoutProps {
   onBack: () => void;
   onOrderSuccess?: () => void;
 }
+
+// Helper to determine if a payment method is Cash On Delivery (never treat GCash/Maya/e-wallets as COD)
+const isCodMethod = (m?: { id: string; name?: string } | null): boolean => {
+  if (!m) return false;
+  const name = (m.name || '').toLowerCase();
+  if (
+    name.includes('gcash') ||
+    name.includes('maya') ||
+    name.includes('wallet') ||
+    name.includes('online') ||
+    name.includes('instapay') ||
+    name.includes('qr')
+  ) {
+    return false;
+  }
+  return (
+    m.id === 'payment-cod' ||
+    m.id === 'cod' ||
+    name.includes('cash on delivery') ||
+    name.includes('cod') ||
+    name.includes('counter') ||
+    name.startsWith('cash')
+  );
+};
 
 const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOrderSuccess }) => {
   const { activePaymentMethods } = usePaymentMethods();
@@ -59,7 +83,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
   }, [step]);
 
   const currentMethod = activePaymentMethods.find(m => m.id === selectedPaymentId) || activePaymentMethods[0];
-  const isCod = currentMethod ? (currentMethod.id === 'payment-cod' || currentMethod.id === 'cod' || currentMethod.name.toLowerCase().includes('cash')) : false;
+  const isCod = isCodMethod(currentMethod);
 
   const handleProceedToPayment = () => {
     setStep('payment');
@@ -368,7 +392,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
           {/* Payment Method Selector Tabs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {activePaymentMethods.map((method) => {
-              const isMethodCod = method.id === 'payment-cod' || method.id === 'cod' || method.name.toLowerCase().includes('cash');
+              const isMethodCod = isCodMethod(method);
               const isSelected = method.id === selectedPaymentId;
               return (
                 <button
@@ -384,12 +408,12 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                   <div className={`p-2 rounded-lg flex-shrink-0 ${
                     isMethodCod ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
                   }`}>
-                    {isMethodCod ? <Banknote className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
+                    {isMethodCod ? <Banknote className="w-5 h-5" /> : <QrCode className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-sm text-zinc-900 truncate">{method.name}</p>
                     <p className="text-[11px] text-zinc-500 truncate">
-                      {isMethodCod ? 'Pay upon receiving' : method.account_number}
+                      {isMethodCod ? 'Pay upon receiving' : (method.account_number || 'Scan QR Code')}
                     </p>
                   </div>
                   {isSelected && <CheckCircle2 className="w-4 h-4 text-amber-600 flex-shrink-0" />}
@@ -413,12 +437,12 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
               <span className="font-black text-amber-700 text-base">₱{totalPrice}</span>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl p-5 border-2 border-blue-400 shadow-md space-y-4">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-blue-400 shadow-md space-y-4">
               {/* QR Code Container */}
               <div className="flex flex-col items-center justify-center">
-                <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-2xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-3 flex items-center justify-center">
+                <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-2xl border-4 border-blue-500 shadow-xl overflow-hidden bg-white p-2.5 flex items-center justify-center">
                   <img
-                    src={currentMethod?.qr_code_url || '/images/payment-qr/gcash-qr-code.jpg'}
+                    src={(currentMethod?.qr_code_url && currentMethod.qr_code_url.trim()) || '/images/payment-qr/gcash-qr-code.jpg'}
                     alt={`${currentMethod?.name || 'Payment'} QR Code`}
                     className="w-full h-full object-contain"
                     onError={(e) => {
@@ -455,10 +479,16 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                     Copied to clipboard!
                   </p>
                 )}
-                <div className="flex justify-between items-center py-1">
+                <div className="flex justify-between items-center py-1 border-b border-zinc-200">
                   <span className="text-zinc-500 font-medium">Account Name:</span>
                   <span className="font-bold text-zinc-900">
                     {currentMethod?.account_name || 'Afoodable Bites'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-zinc-500 font-medium">Amount to Pay:</span>
+                  <span className="font-black text-amber-600 text-sm sm:text-base">
+                    ₱{totalPrice}
                   </span>
                 </div>
               </div>
