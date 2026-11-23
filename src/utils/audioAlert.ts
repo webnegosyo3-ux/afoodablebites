@@ -55,11 +55,11 @@ export const playChimeOnce = () => {
     osc1Harmonic.type = 'triangle';
     osc1Harmonic.frequency.setValueAtTime(1318.5, now);
 
-    gain1.gain.setValueAtTime(0.4, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    gain1.gain.setValueAtTime(0.7, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
 
-    gain1Harmonic.gain.setValueAtTime(0.12, now);
-    gain1Harmonic.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    gain1Harmonic.gain.setValueAtTime(0.2, now);
+    gain1Harmonic.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
     osc1.connect(gain1);
     osc1Harmonic.connect(gain1Harmonic);
@@ -68,8 +68,8 @@ export const playChimeOnce = () => {
 
     osc1.start(now);
     osc1Harmonic.start(now);
-    osc1.stop(now + 0.6);
-    osc1Harmonic.stop(now + 0.6);
+    osc1.stop(now + 0.7);
+    osc1Harmonic.stop(now + 0.7);
 
     // Second tone: Lower bell (C5 - 523.25 Hz)
     const note2Start = now + 0.28;
@@ -83,11 +83,11 @@ export const playChimeOnce = () => {
     osc2Harmonic.type = 'triangle';
     osc2Harmonic.frequency.setValueAtTime(1046.5, note2Start);
 
-    gain2.gain.setValueAtTime(0.45, note2Start);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, note2Start + 0.9);
+    gain2.gain.setValueAtTime(0.75, note2Start);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, note2Start + 1.1);
 
-    gain2Harmonic.gain.setValueAtTime(0.15, note2Start);
-    gain2Harmonic.gain.exponentialRampToValueAtTime(0.0001, note2Start + 0.6);
+    gain2Harmonic.gain.setValueAtTime(0.25, note2Start);
+    gain2Harmonic.gain.exponentialRampToValueAtTime(0.0001, note2Start + 0.7);
 
     osc2.connect(gain2);
     osc2Harmonic.connect(gain2Harmonic);
@@ -104,9 +104,11 @@ export const playChimeOnce = () => {
 };
 
 /**
- * Rings repeatedly (3 times) to alert the store admin of a new incoming order
+ * Rings continuously for an extended duration (default 30 repeats = ~45 seconds)
+ * to loudly alert the kitchen / store admin of a new incoming customer order
+ * until answered or stopped.
  */
-export const playOrderRingtone = (repeats = 3) => {
+export const playOrderRingtone = (repeats = 30) => {
   if (!isSoundAlertEnabled()) return;
 
   stopOrderRingtone();
@@ -122,7 +124,7 @@ export const playOrderRingtone = (repeats = 3) => {
       if (count >= repeats) {
         stopOrderRingtone();
       }
-    }, 1300);
+    }, 1400);
   }
 };
 

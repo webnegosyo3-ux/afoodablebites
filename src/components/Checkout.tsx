@@ -56,6 +56,11 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
   const [countdown, setCountdown] = useState(4);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
+  // GCash / E-Wallet verification fields
+  const [gcashAccountName, setGcashAccountName] = useState('');
+  const [gcashRefNumber, setGcashRefNumber] = useState('');
+  const [paymentFormError, setPaymentFormError] = useState('');
+
   // Selected payment method ID - Default to GCash so QR code is immediately shown
   const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
     const gcash = activePaymentMethods.find(m => m.id === 'payment-gcash' || m.name.toLowerCase().includes('gcash'));
@@ -92,6 +97,16 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
 
   const handlePlaceOrder = async () => {
     if (isSubmitting) return;
+
+    if (!isCod) {
+      if (!gcashAccountName.trim() || !gcashRefNumber.trim()) {
+        setPaymentFormError('Required po: Pakilagay ang inyong GCash Account Name/Number at Reference Number bago mag-place ng order.');
+        const el = document.getElementById('gcash-verification-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+    }
+    setPaymentFormError('');
     setIsSubmitting(true);
 
     const timeInfo = serviceType === 'pickup'
@@ -111,6 +126,8 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
         landmark: serviceType === 'delivery' && landmark ? landmark.trim() : undefined,
         pickupTime: timeInfo || undefined,
         paymentMethod: paymentText,
+        paymentSenderName: !isCod ? gcashAccountName.trim() : undefined,
+        paymentReferenceNumber: !isCod ? gcashRefNumber.trim() : undefined,
         total: totalPrice,
         items: cartItems,
         notes: notes ? notes.trim() : undefined
@@ -512,6 +529,58 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                   </span>
                 </div>
               </div>
+
+              {/* REQUIRED GCASH / E-WALLET VERIFICATION SECTION */}
+              <div id="gcash-verification-section" className="bg-amber-50/90 border-2 border-amber-300 rounded-xl p-3.5 sm:p-4 space-y-3 shadow-sm">
+                <div className="flex items-center space-x-1.5 text-amber-950 font-bold text-xs sm:text-sm">
+                  <span className="text-base">📝</span>
+                  <span>Required: GCash / Sender Payment Details</span>
+                </div>
+                <p className="text-[11px] text-amber-900 leading-relaxed">
+                  I-scan o i-send ang payment sa QR code sa itaas, at ilagay dito ang inyong GCash Account at Reference Number mula sa inyong GCash receipt:
+                </p>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-zinc-700 uppercase tracking-wider">
+                    Your GCash Account Name / Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={gcashAccountName}
+                    onChange={(e) => {
+                      setGcashAccountName(e.target.value);
+                      if (paymentFormError) setPaymentFormError('');
+                    }}
+                    placeholder="e.g. Juan Dela Cruz / 0917 123 4567"
+                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-zinc-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-zinc-700 uppercase tracking-wider">
+                    GCash Reference Number (Ref No.) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={gcashRefNumber}
+                    onChange={(e) => {
+                      setGcashRefNumber(e.target.value);
+                      if (paymentFormError) setPaymentFormError('');
+                    }}
+                    placeholder="e.g. 1002 9384 1928"
+                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-zinc-900 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+
+                {paymentFormError && (
+                  <p className="text-xs font-bold text-red-600 bg-red-100 border border-red-200 rounded-lg p-2.5 flex items-center space-x-1.5">
+                    <span>⚠️</span>
+                    <span>{paymentFormError}</span>
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -554,6 +623,22 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                   </button>
                 )}
               </div>
+              {!isCod && (
+                <div className="pt-2 border-t border-amber-200/50 mt-1 space-y-1 text-xs">
+                  <p className="text-zinc-700">
+                    <span className="text-zinc-500">Sender Account:</span>{' '}
+                    <strong className={gcashAccountName ? 'text-zinc-900' : 'text-red-500 italic'}>
+                      {gcashAccountName || 'Hindi pa nailagay (Required)'}
+                    </strong>
+                  </p>
+                  <p className="text-zinc-700">
+                    <span className="text-zinc-500">GCash Ref No:</span>{' '}
+                    <strong className={gcashRefNumber ? 'font-mono text-zinc-900 font-bold' : 'text-red-500 italic'}>
+                      {gcashRefNumber || 'Hindi pa nailagay (Required)'}
+                    </strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
@@ -580,6 +665,13 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
               <span className="text-amber-600">₱{totalPrice}</span>
             </div>
           </div>
+
+          {!isCod && (!gcashAccountName.trim() || !gcashRefNumber.trim()) && (
+            <div className="bg-amber-100 border border-amber-300 rounded-xl p-3 text-xs text-amber-900 font-semibold mb-3 flex items-center space-x-2">
+              <span className="text-base">⚠️</span>
+              <span>Kailangan ilagay ang inyong GCash Account Name & Ref Number bago mag-submit.</span>
+            </div>
+          )}
 
           <button
             type="button"
@@ -655,6 +747,18 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                   )}
                 </div>
               </div>
+              {placedOrder.paymentSenderName && (
+                <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
+                  <span>Sender Account:</span>
+                  <span className="font-semibold text-zinc-900">{placedOrder.paymentSenderName}</span>
+                </div>
+              )}
+              {placedOrder.paymentReferenceNumber && (
+                <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
+                  <span>Reference No:</span>
+                  <span className="font-mono font-bold text-amber-600">{placedOrder.paymentReferenceNumber}</span>
+                </div>
+              )}
               <div className="flex justify-between py-1 border-b border-zinc-200 text-zinc-700">
                 <span>Items:</span>
                 <span className="font-semibold">{placedOrder.items.reduce((sum, item) => sum + item.quantity, 0)} items</span>

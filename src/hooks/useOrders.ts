@@ -13,6 +13,8 @@ export interface CreateOrderInput {
   landmark?: string;
   pickupTime?: string;
   paymentMethod: string;
+  paymentSenderName?: string;
+  paymentReferenceNumber?: string;
   total: number;
   items: CartItem[];
   notes?: string;
@@ -86,6 +88,8 @@ export const useOrders = () => {
           landmark: d.landmark,
           pickupTime: d.pickup_time || d.pickupTime,
           paymentMethod: d.payment_method || d.paymentMethod || 'Cash on Delivery',
+          paymentSenderName: d.payment_sender_name || d.paymentSenderName,
+          paymentReferenceNumber: d.payment_reference_number || d.paymentReferenceNumber,
           total: Number(d.total) || 0,
           items: Array.isArray(d.items) ? d.items : typeof d.items === 'string' ? JSON.parse(d.items) : [],
           notes: d.notes,
@@ -171,6 +175,8 @@ export const useOrders = () => {
     const newOrder: AdminOrder = {
       id: orderId,
       ...input,
+      paymentSenderName: input.paymentSenderName,
+      paymentReferenceNumber: input.paymentReferenceNumber,
       status: 'pending',
       createdAt: now,
       updatedAt: now
@@ -187,24 +193,28 @@ export const useOrders = () => {
 
     if (isSupabaseConfigured) {
       try {
-        await supabase
-          .from('orders')
-          .insert({
-            id: orderId,
-            customer_name: input.customerName,
-            contact_number: input.contactNumber,
-            service_type: input.serviceType,
-            address: input.address || null,
-            landmark: input.landmark || null,
-            pickup_time: input.pickupTime || null,
-            payment_method: input.paymentMethod,
-            total: input.total,
-            items: input.items,
-            notes: input.notes || null,
-            status: 'pending',
-            created_at: now,
-            updated_at: now
-          });
+        const payload: any = {
+          id: orderId,
+          customer_name: input.customerName,
+          contact_number: input.contactNumber,
+          service_type: input.serviceType,
+          address: input.address || null,
+          landmark: input.landmark || null,
+          pickup_time: input.pickupTime || null,
+          payment_method: input.paymentMethod,
+          total: input.total,
+          items: input.items,
+          notes: input.notes 
+            ? (input.paymentReferenceNumber ? `${input.notes} | Ref: ${input.paymentReferenceNumber} (Sender: ${input.paymentSenderName || ''})` : input.notes)
+            : (input.paymentReferenceNumber ? `Ref: ${input.paymentReferenceNumber} (Sender: ${input.paymentSenderName || ''})` : null),
+          status: 'pending',
+          created_at: now,
+          updated_at: now
+        };
+        if (input.paymentSenderName) payload.payment_sender_name = input.paymentSenderName;
+        if (input.paymentReferenceNumber) payload.payment_reference_number = input.paymentReferenceNumber;
+
+        await supabase.from('orders').insert(payload);
       } catch (err) {
         console.warn('Supabase insert order error:', err);
       }

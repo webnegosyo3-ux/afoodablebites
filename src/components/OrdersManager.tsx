@@ -418,6 +418,48 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
                     )}
                   </div>
 
+                  {/* GCash / QR Payment Verification Box */}
+                  {(order.paymentSenderName || order.paymentReferenceNumber) && (
+                    <div className="bg-gradient-to-r from-blue-950/40 via-blue-900/30 to-zinc-900 border border-blue-500/40 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-1.5 text-blue-300 font-bold">
+                          <span>📱</span>
+                          <span>GCash / Online Payment Verification</span>
+                          <span className="text-[10px] font-bold bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                            Verify in GCash
+                          </span>
+                        </div>
+                        {order.paymentSenderName && (
+                          <p className="text-zinc-300">
+                            <span className="text-zinc-500 font-medium">Sender GCash Account:</span>{' '}
+                            <strong className="text-white">{order.paymentSenderName}</strong>
+                          </p>
+                        )}
+                        {order.paymentReferenceNumber && (
+                          <p className="text-zinc-300">
+                            <span className="text-zinc-500 font-medium">GCash Reference No:</span>{' '}
+                            <strong className="font-mono text-amber-300 tracking-wider text-sm ml-1">
+                              {order.paymentReferenceNumber}
+                            </strong>
+                          </p>
+                        )}
+                      </div>
+
+                      {order.paymentReferenceNumber && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(order.paymentReferenceNumber || '');
+                            alert('Copied GCash Ref No: ' + order.paymentReferenceNumber);
+                          }}
+                          className="px-3 py-1.5 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-400/30 rounded-lg font-bold text-xs self-start sm:self-center transition flex items-center space-x-1"
+                        >
+                          <span>Copy Ref No. 📋</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Ordered Items Breakdown */}
                   <div className="space-y-2">
                     <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">

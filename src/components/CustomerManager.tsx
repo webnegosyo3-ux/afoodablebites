@@ -429,7 +429,10 @@ const CustomerManager: React.FC<CustomerManagerProps> = ({ onBack }) => {
                         <span className="text-zinc-500">{formatDate(order.createdAt)}</span>
                       </div>
                       <div className="flex items-center justify-between text-zinc-400">
-                        <span className="capitalize">{order.serviceType} • {order.paymentMethod}</span>
+                        <span className="capitalize">
+                          {order.serviceType} • {order.paymentMethod}
+                          {order.paymentReferenceNumber && <span className="font-mono text-amber-300 ml-1">(Ref: {order.paymentReferenceNumber})</span>}
+                        </span>
                         <span className="font-black text-white text-sm">₱{order.total}</span>
                       </div>
                       <div className="border-t border-zinc-800/60 pt-2 text-[11px] text-zinc-400">

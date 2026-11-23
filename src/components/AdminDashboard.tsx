@@ -33,24 +33,24 @@ const AdminTopbar: React.FC<{
   right?: React.ReactNode;
 }> = ({ title, onBack, backLabel = 'Dashboard', right }) => (
   <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between h-16">
-        <div className="flex items-center space-x-3">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between h-14 sm:h-16">
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
           {onBack && (
             <>
               <button
                 onClick={onBack}
-                className="flex items-center space-x-1.5 text-zinc-400 hover:text-amber-400 transition-colors duration-200 text-sm font-medium"
+                className="flex items-center space-x-1 text-zinc-400 hover:text-amber-400 transition-colors text-xs sm:text-sm font-medium flex-shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>{backLabel}</span>
+                <span className="hidden sm:inline">{backLabel}</span>
               </button>
               <span className="text-zinc-700">|</span>
             </>
           )}
-          <h1 className="text-lg sm:text-xl font-bold text-white">{title}</h1>
+          <h1 className="text-sm sm:text-xl font-bold text-white truncate">{title}</h1>
         </div>
-        {right && <div className="flex items-center space-x-3">{right}</div>}
+        {right && <div className="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">{right}</div>}
       </div>
     </div>
   </div>
@@ -134,7 +134,7 @@ const AdminDashboard: React.FC = () => {
     if (newArrival) {
       knownOrderIdsRef.current.add(newArrival.id);
       setActiveNewOrderAlert(newArrival);
-      playOrderRingtone(4);
+      playOrderRingtone(30);
     }
   }, [orders]);
 
@@ -145,7 +145,7 @@ const AdminDashboard: React.FC = () => {
       if (newOrder) {
         knownOrderIdsRef.current.add(newOrder.id);
         setActiveNewOrderAlert(newOrder);
-        playOrderRingtone(4);
+        playOrderRingtone(30);
       }
     };
     window.addEventListener('afoodable_new_order_event', handler);
@@ -776,24 +776,24 @@ const AdminDashboard: React.FC = () => {
       <div className="min-h-screen bg-zinc-950">
         {/* Topbar */}
         <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-3">
-                <img src="/images/afodable-bites-logo.jpg" alt="Afoodable Bites" className="w-9 h-9 rounded-full object-cover ring-2 ring-amber-500/40"
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-14 sm:h-16">
+              <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                <img src="/images/afodable-bites-logo.jpg" alt="Afoodable Bites" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-2 ring-amber-500/40 flex-shrink-0"
                   onError={e => { e.currentTarget.src = '/logo.jpg'; }} />
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center space-x-1.5">
-                    <span className="text-white font-black text-lg leading-none">Afoodable Bites</span>
-                    <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
+                    <span className="text-white font-black text-sm sm:text-lg leading-tight truncate">Afoodable Bites</span>
+                    <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 animate-pulse flex-shrink-0" />
                   </div>
-                  <span className="text-amber-400 text-xs font-semibold">Admin Dashboard</span>
+                  <span className="text-amber-400 text-[10px] sm:text-xs font-semibold block leading-none">Admin Dashboard</span>
                 </div>
               </div>
-              <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
                 <button
                   type="button"
                   onClick={toggleSound}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition border ${
+                  className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition border ${
                     soundEnabled
                       ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
                       : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
@@ -801,18 +801,18 @@ const AdminDashboard: React.FC = () => {
                   title={soundEnabled ? 'Click to Mute Ringtone' : 'Click to Enable Ringtone'}
                 >
                   {soundEnabled ? <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" /> : <BellOff className="w-3.5 h-3.5" />}
-                  <span>{soundEnabled ? 'Ring: ON' : 'Ring: MUTED'}</span>
+                  <span className="hidden sm:inline">{soundEnabled ? 'Ring: ON' : 'Ring: MUTED'}</span>
                 </button>
-                <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-red-400 transition font-medium">Logout</button>
+                <button onClick={handleLogout} className="px-2.5 py-1 text-xs text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-lg transition font-medium">Logout</button>
               </div>
             </div>
           </div>
         </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
           {[
             { 
               label: 'Customer Orders', 
@@ -842,33 +842,33 @@ const AdminDashboard: React.FC = () => {
               color: 'from-orange-500 to-red-500' 
             },
           ].map(({ label, value, icon: Icon, color, badge }) => (
-            <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex items-center space-x-4">
-              <div className={`bg-gradient-to-br ${color} p-3 rounded-xl shadow-lg flex-shrink-0`}>
-                <Icon className="h-5 w-5 text-white" />
+            <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-5 flex items-center space-x-2.5 sm:space-x-4 min-w-0 shadow-sm">
+              <div className={`bg-gradient-to-br ${color} p-2 sm:p-3 rounded-xl shadow-lg flex-shrink-0`}>
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center space-x-1.5">
-                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider truncate">{label}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center space-x-1">
+                  <p className="text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider truncate">{label}</p>
                   {badge && (
-                    <span className="text-[10px] font-black bg-amber-500 text-black px-1.5 py-0.2 rounded-full animate-pulse">
+                    <span className="text-[9px] sm:text-[10px] font-black bg-amber-500 text-black px-1.5 py-0.2 rounded-full animate-pulse flex-shrink-0">
                       {badge}
                     </span>
                   )}
                 </div>
-                <p className="text-2xl font-black text-white mt-0.5">{value}</p>
+                <p className="text-base sm:text-2xl font-black text-white mt-0.5 truncate">{value}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* Quick Actions + Categories Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Quick Actions */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-            <h3 className="text-base font-bold text-white mb-4 flex items-center space-x-2">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6">
+            <h3 className="text-sm sm:text-base font-bold text-white mb-3 sm:mb-4 flex items-center space-x-2">
               <Sparkles className="w-4 h-4 text-amber-400" /><span>Quick Actions</span>
             </h3>
-            <div className="space-y-1">
+            <div className="space-y-1 sm:space-y-1">
               {[
                 { 
                   label: 'Customer Orders', 
@@ -907,18 +907,18 @@ const AdminDashboard: React.FC = () => {
                 { label: 'Site Settings', icon: Settings, action: () => setCurrentView('settings'), highlight: false },
               ].map(({ label, icon: Icon, action, highlight, badge }) => (
                 <button key={label} onClick={action}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all ${
+                  className={`w-full flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-left transition-all active:scale-[0.99] ${
                     highlight
                       ? 'bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 shadow-sm'
                       : 'hover:bg-zinc-800'
                   }`}
                 >
-                  <div className="flex items-center space-x-3 min-w-0">
+                  <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
                     <Icon className={`h-4 w-4 flex-shrink-0 ${highlight ? 'text-amber-400' : 'text-zinc-500'}`} />
-                    <span className={`text-sm font-medium ${highlight ? 'text-amber-300 font-bold' : 'text-zinc-300'}`}>{label}</span>
+                    <span className={`text-xs sm:text-sm font-medium ${highlight ? 'text-amber-300 font-bold' : 'text-zinc-300'}`}>{label}</span>
                   </div>
                   {badge && (
-                    <span className="text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                    <span className="text-[10px] sm:text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
                       {badge}
                     </span>
                   )}
@@ -928,22 +928,22 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Category Overview */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-            <h3 className="text-base font-bold text-white mb-4 flex items-center space-x-2">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6">
+            <h3 className="text-sm sm:text-base font-bold text-white mb-3 sm:mb-4 flex items-center space-x-2">
               <FolderOpen className="w-4 h-4 text-amber-400" /><span>Categories Overview</span>
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {categoryCounts.map(cat => (
-                <div key={cat.id} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
-                  <div className="flex items-center space-x-2.5">
-                    <span className="text-xl">{cat.icon}</span>
-                    <span className="text-sm font-medium text-zinc-300">{cat.name}</span>
+                <div key={cat.id} className="flex items-center justify-between py-1.5 sm:py-2 border-b border-zinc-800 last:border-0">
+                  <div className="flex items-center space-x-2 sm:space-x-2.5">
+                    <span className="text-lg sm:text-xl">{cat.icon}</span>
+                    <span className="text-xs sm:text-sm font-medium text-zinc-300">{cat.name}</span>
                   </div>
-                  <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full">{cat.count} items</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-amber-400 bg-amber-500/10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full">{cat.count} items</span>
                 </div>
               ))}
               {categoryCounts.length === 0 && (
-                <p className="text-zinc-500 text-sm text-center py-4">No categories yet.</p>
+                <p className="text-zinc-500 text-xs sm:text-sm text-center py-4">No categories yet.</p>
               )}
             </div>
           </div>
@@ -951,8 +951,8 @@ const AdminDashboard: React.FC = () => {
 
         {/* All Menu Items Preview */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
-            <h3 className="text-base font-bold text-white">All Menu Items ({totalItems})</h3>
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-zinc-800 flex items-center justify-between">
+            <h3 className="text-sm sm:text-base font-bold text-white">All Menu Items ({totalItems})</h3>
             <button onClick={() => setCurrentView('items')} className="text-xs font-bold text-amber-400 hover:text-amber-300 transition">
               Manage All →
             </button>
@@ -961,32 +961,32 @@ const AdminDashboard: React.FC = () => {
             {menuItems.map(item => {
               const cat = categories.find(c => c.id === item.category);
               return (
-                <div key={item.id} className="px-6 py-4 flex items-center justify-between hover:bg-zinc-800/40 transition">
-                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    <span className="text-xl flex-shrink-0">{cat?.icon || '🍽️'}</span>
+                <div key={item.id} className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-zinc-800/40 transition gap-2">
+                  <div className="flex items-center space-x-2.5 sm:space-x-3 flex-1 min-w-0">
+                    <span className="text-lg sm:text-xl flex-shrink-0">{cat?.icon || '🍽️'}</span>
                     <div className="min-w-0">
-                      <div className="flex items-center space-x-2 flex-wrap gap-1">
-                        <span className="font-semibold text-white text-sm">{item.name}</span>
-                        {item.popular && <span className="text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2 py-0.5 rounded-full">⭐ Popular</span>}
-                        {!item.available && <span className="text-xs bg-red-900/50 text-red-400 border border-red-800 px-2 py-0.5 rounded-full">Unavailable</span>}
+                      <div className="flex items-center space-x-1.5 sm:space-x-2 flex-wrap gap-1">
+                        <span className="font-semibold text-white text-xs sm:text-sm truncate">{item.name}</span>
+                        {item.popular && <span className="text-[9px] sm:text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full">⭐ Popular</span>}
+                        {!item.available && <span className="text-[9px] sm:text-xs bg-red-900/50 text-red-400 border border-red-800 px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full">Unavailable</span>}
                       </div>
-                      <p className="text-xs text-zinc-500 truncate">{cat?.name} · {item.variations?.length || 0} var · {item.addOns?.length || 0} add-ons</p>
+                      <p className="text-[11px] sm:text-xs text-zinc-500 truncate">{cat?.name} · {item.variations?.length || 0} var · {item.addOns?.length || 0} add-ons</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4 ml-4 flex-shrink-0">
+                  <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
                     <div className="text-right">
                       {item.isOnDiscount && item.discountPrice ? (
                         <div>
-                          <div className="text-orange-400 font-bold text-sm">₱{item.discountPrice}</div>
-                          <div className="text-zinc-600 line-through text-xs">₱{item.basePrice}</div>
+                          <div className="text-orange-400 font-bold text-xs sm:text-sm">₱{item.discountPrice}</div>
+                          <div className="text-zinc-600 line-through text-[10px] sm:text-xs">₱{item.basePrice}</div>
                         </div>
                       ) : (
-                        <span className="text-white font-bold text-sm">₱{item.basePrice}</span>
+                        <span className="text-white font-bold text-xs sm:text-sm">₱{item.basePrice}</span>
                       )}
                     </div>
-                    <div className="flex space-x-1">
-                      <button onClick={() => handleEditItem(item)} title="Edit" className="p-1.5 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition"><Edit className="h-4 w-4" /></button>
-                      <button onClick={() => handleDeleteItem(item.id)} title="Delete" className="p-1.5 text-zinc-600 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition"><Trash2 className="h-4 w-4" /></button>
+                    <div className="flex space-x-0.5 sm:space-x-1">
+                      <button onClick={() => handleEditItem(item)} title="Edit" className="p-1.5 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                      <button onClick={() => handleDeleteItem(item.id)} title="Delete" className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                     </div>
                   </div>
                 </div>

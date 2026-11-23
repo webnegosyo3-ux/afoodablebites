@@ -111,6 +111,8 @@ export interface AdminOrder {
   landmark?: string;
   pickupTime?: string;
   paymentMethod: string;
+  paymentSenderName?: string;
+  paymentReferenceNumber?: string;
   total: number;
   items: CartItem[];
   notes?: string;
