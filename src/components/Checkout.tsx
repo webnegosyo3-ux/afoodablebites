@@ -54,7 +54,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [countdown, setCountdown] = useState(4);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
   // GCash / E-Wallet verification fields
@@ -153,23 +152,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
     }
   }, [onOrderSuccess, onBack]);
 
-  // Automatic redirect countdown to main page when order succeeds
-  React.useEffect(() => {
-    if (!showSuccessModal) return;
-    setCountdown(4);
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleFinishOrder();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [showSuccessModal, handleFinishOrder]);
+  // No automatic redirect — customer must press the button manually.
 
   const isDetailsValid = Boolean(
     customerName.trim() &&
@@ -734,9 +717,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                 <span>Bumalik sa Main Page</span>
                 <span>🏠</span>
               </button>
-              <p className="text-zinc-500 text-[10px] text-center">
-                Auto-redirecting in {countdown}s...
-              </p>
             </div>
 
           </div>
