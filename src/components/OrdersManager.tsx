@@ -18,7 +18,8 @@ import {
   BellOff,
   Menu,
   Copy,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
 import { AdminOrder, OrderStatus } from '../types';
@@ -29,6 +30,7 @@ import {
   stopOrderRingtone 
 } from '../utils/audioAlert';
 import { buildTextReceipt } from './OrderReceipt';
+import { exportOrdersCsv } from '../utils/exportCsv';
 
 interface OrdersManagerProps {
   onBack: () => void;
@@ -91,6 +93,10 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
       setCopiedOrderId(order.id);
       setTimeout(() => setCopiedOrderId(null), 2500);
     });
+  };
+
+  const handleExportCsv = () => {
+    exportOrdersCsv(filteredOrders.length > 0 ? filteredOrders : orders);
   };
 
   const handleToggleSound = () => {
@@ -198,6 +204,17 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
               >
                 {soundEnabled ? <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" /> : <BellOff className="w-3.5 h-3.5" />}
                 <span className="hidden sm:inline">{soundEnabled ? 'Ring: ON' : 'Ring: MUTED'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={orders.length === 0}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center space-x-1 sm:space-x-1.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Export orders as CSV"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Export CSV</span>
               </button>
 
               {orders.length > 0 && (
@@ -385,10 +402,11 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
                             deleteOrder(order.id);
                           }
                         }}
-                        className="p-1.5 text-zinc-500 hover:text-red-400 transition"
-                        title="Delete order"
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition flex items-center space-x-1"
+                        title="Delete this order"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Delete</span>
                       </button>
 
                       <button

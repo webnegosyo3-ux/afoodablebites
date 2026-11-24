@@ -17,11 +17,13 @@ import {
   PieChart,
   BarChart3,
   RefreshCw,
-  Menu
+  Menu,
+  Download
 } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
 import { useMenu } from '../hooks/useMenu';
 import { AdminOrder } from '../types';
+import { exportSalesCsv } from '../utils/exportCsv';
 
 interface AnalyticsManagerProps {
   onBack?: () => void;
@@ -36,6 +38,14 @@ const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ onBack, embedded = 
   const { menuItems } = useMenu();
   const [timeRange, setTimeRange] = useState<TimeRange>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const timeLabelMap: Record<TimeRange, string> = {
+    all: 'all-time', today: 'today', week: 'this-week', month: 'this-month'
+  };
+
+  const handleExportCsv = () => {
+    exportSalesCsv(filteredOrders, timeLabelMap[timeRange]);
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -170,6 +180,17 @@ const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ onBack, embedded = 
             </h2>
           </div>
           <div className="flex items-center space-x-2 flex-wrap gap-2">
+            {/* Export CSV Button */}
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 hover:text-emerald-300 rounded-xl text-xs font-bold border border-emerald-500/30 transition active:scale-95"
+              title="Export Sales Report as CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </button>
+
             {/* Refresh Button */}
             <button
               type="button"
@@ -246,6 +267,17 @@ const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ onBack, embedded = 
               </div>
 
               <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
+                {/* Export CSV */}
+                <button
+                  type="button"
+                  onClick={handleExportCsv}
+                  className="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 rounded-xl text-xs font-bold border border-emerald-500/30 transition active:scale-95"
+                  title="Export Sales Report as CSV"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </button>
+
                 {/* Refresh Button */}
                 <button
                   type="button"
