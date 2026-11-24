@@ -355,30 +355,32 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
                   }`}
                 >
                   {/* Order Card Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-800">
+                  <div className="pb-4 border-b border-zinc-800 space-y-3">
+
+                    {/* Row 1: Order ID + customer name + timestamp */}
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 font-black text-sm">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 font-black text-sm flex-shrink-0">
                         #{order.id.replace('AB-', '')}
                       </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-bold text-white text-base">
+                      <div className="min-w-0">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-0.5">
+                          <h3 className="font-bold text-white text-base leading-tight">
                             {order.customerName}
                           </h3>
-                          <span className="text-xs font-mono text-zinc-400">
-                            ({order.id})
+                          <span className="text-xs font-mono text-zinc-500">
+                            {order.id}
                           </span>
                         </div>
-                        <p className="text-xs text-zinc-400">
+                        <p className="text-xs text-zinc-400 mt-0.5">
                           Placed: {formatTimestamp(order.createdAt)}
                         </p>
                       </div>
                     </div>
 
-                    {/* Status Badge + Status Select */}
-                    <div className="flex items-center space-x-2">
+                    {/* Row 2: Status badge + status select — full width on mobile */}
+                    <div className="flex items-center gap-2 flex-wrap">
                       <div
-                        className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center space-x-1.5 ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
+                        className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center space-x-1.5 flex-shrink-0 ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
                       >
                         <StatusIcon className="w-3.5 h-3.5" />
                         <span>{statusCfg.label}</span>
@@ -387,13 +389,32 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
                       <select
                         value={order.status}
                         onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                        className="bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                        className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
                       >
                         <option value="pending">Set: Pending</option>
                         <option value="preparing">Set: Preparing</option>
                         <option value="completed">Set: Completed</option>
                         <option value="cancelled">Set: Cancelled</option>
                       </select>
+                    </div>
+
+                    {/* Row 3: Action buttons — full width on mobile */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyReceipt(order)}
+                        title="Copy receipt as text"
+                        className={`flex-1 py-1.5 rounded-xl transition flex items-center justify-center space-x-1.5 text-xs font-bold border ${
+                          copiedOrderId === order.id
+                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                            : 'bg-zinc-800 text-zinc-400 hover:text-amber-400 border-zinc-700 hover:border-amber-500/40'
+                        }`}
+                      >
+                        {copiedOrderId === order.id
+                          ? <><Check className="w-3.5 h-3.5" /><span>Copied!</span></>
+                          : <><Copy className="w-3.5 h-3.5" /><span>Copy Receipt</span></>
+                        }
+                      </button>
 
                       <button
                         type="button"
@@ -402,29 +423,14 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
                             deleteOrder(order.id);
                           }
                         }}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition flex items-center space-x-1"
+                        className="flex-1 py-1.5 rounded-xl text-xs font-bold border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition flex items-center justify-center space-x-1.5"
                         title="Delete this order"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Delete</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleCopyReceipt(order)}
-                        title="Copy receipt as text"
-                        className={`p-1.5 rounded-lg transition flex items-center space-x-1 text-xs font-bold border ${
-                          copiedOrderId === order.id
-                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                            : 'bg-zinc-800 text-zinc-400 hover:text-amber-400 border-zinc-700 hover:border-amber-500/40'
-                        }`}
-                      >
-                        {copiedOrderId === order.id
-                          ? <><Check className="w-3.5 h-3.5" /><span className="hidden sm:inline">Copied!</span></>
-                          : <><Copy className="w-3.5 h-3.5" /><span className="hidden sm:inline">Copy Receipt</span></>
-                        }
+                        <span>Delete</span>
                       </button>
                     </div>
+
                   </div>
 
                   {/* Customer Details Grid */}
