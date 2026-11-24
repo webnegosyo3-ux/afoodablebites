@@ -1,30 +1,52 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { SiteSettings } from '../types';
 
-const DEFAULT_SETTINGS: SiteSettings = {
+const LOCAL_KEY = 'afoodable_site_settings_v1';
+
+export const DEFAULT_SETTINGS: SiteSettings = {
   site_name: 'Afoodable Bites',
   site_logo: '/images/afodable-bites-logo.jpg',
   site_description: 'Always Serving Hot! Sizzling Specialties, Hearty Rice Meals, and Comfort Soups.',
   currency: '₱',
-  currency_code: 'PHP'
+  currency_code: 'PHP',
+};
+
+const loadLocal = (): SiteSettings | null => {
+  try {
+    const s = localStorage.getItem(LOCAL_KEY);
+    if (s) {
+      const p = JSON.parse(s);
+      if (p && p.site_name) return p;
+    }
+  } catch {}
+  return null;
+};
+
+const saveLocal = (settings: SiteSettings) => {
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(settings)); } catch {}
 };
 
 export const useSiteSettings = () => {
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(
+    loadLocal() ?? DEFAULT_SETTINGS
+  );
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
 
-  const fetchSiteSettings = async () => {
+  const persist = useCallback((s: SiteSettings) => {
+    saveLocal(s);
+    setSiteSettings(s);
+  }, []);
+
+  const fetchSiteSettings = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setSiteSettings(DEFAULT_SETTINGS);
+      persist(loadLocal() ?? DEFAULT_SETTINGS);
       return;
     }
-
     try {
       setLoading(true);
       setError(null);
-
       const { data, error } = await supabase
         .from('site_settings')
         .select('*')
@@ -33,72 +55,69 @@ export const useSiteSettings = () => {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        setSiteSettings(DEFAULT_SETTINGS);
+        persist(loadLocal() ?? DEFAULT_SETTINGS);
         return;
       }
 
-      const settings: SiteSettings = {
-        site_name: data.find(s => s.id === 'site_name')?.value || 'Afoodable Bites',
-        site_logo: data.find(s => s.id === 'site_logo')?.value || '/images/afodable-bites-logo.jpg',
+      const remote: SiteSettings = {
+        site_name:        data.find(s => s.id === 'site_name')?.value        || DEFAULT_SETTINGS.site_name,
+        site_logo:        data.find(s => s.id === 'site_logo')?.value        || DEFAULT_SETTINGS.site_logo,
         site_description: data.find(s => s.id === 'site_description')?.value || DEFAULT_SETTINGS.site_description,
-        currency: data.find(s => s.id === 'currency')?.value || '₱',
-        currency_code: data.find(s => s.id === 'currency_code')?.value || 'PHP'
+        currency:         data.find(s => s.id === 'currency')?.value         || DEFAULT_SETTINGS.currency,
+        currency_code:    data.find(s => s.id === 'currency_code')?.value    || DEFAULT_SETTINGS.currency_code,
       };
-
-      setSiteSettings(settings);
+      persist(remote);
     } catch (err) {
-      console.warn('Error fetching site settings from Supabase, using defaults:', err);
-      setSiteSettings(DEFAULT_SETTINGS);
-      setError(err instanceof Error ? err.message : 'Using default settings');
+      console.warn('[SiteSettings] Fetch error, using local cache:', err);
+      const local = loadLocal();
+      if (local) persist(local);
+      setError(err instanceof Error ? err.message : 'Using cached settings');
     } finally {
       setLoading(false);
     }
-  };
+  }, [persist]);
+
+  useEffect(() => { fetchSiteSettings(); }, [fetchSiteSettings]);
 
   const updateSiteSetting = async (id: string, value: string) => {
-    try {
-      setError(null);
+    // Optimistic local update
+    const updated = { ...siteSettings, [id]: value };
+    persist(updated);
 
-      const { error } = await supabase
-        .from('site_settings')
-        .update({ value })
-        .eq('id', id);
-
-      if (error) throw error;
-      await fetchSiteSettings();
-    } catch (err) {
-      console.error('Error updating site setting:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update site setting');
-      throw err;
+    if (isSupabaseConfigured) {
+      try {
+        setError(null);
+        const { error } = await supabase
+          .from('site_settings')
+          .upsert({ id, value, type: 'text', updated_at: new Date().toISOString() }, { onConflict: 'id' });
+        if (error) throw error;
+      } catch (err) {
+        console.warn('[SiteSettings] Supabase update error — saved locally:', err);
+        setError(err instanceof Error ? err.message : 'Saved locally only');
+      }
     }
   };
 
   const updateSiteSettings = async (updates: Partial<SiteSettings>) => {
-    try {
-      setError(null);
+    const updated = { ...siteSettings, ...updates };
+    persist(updated);
 
-      const updatePromises = Object.entries(updates).map(([id, value]) => {
-        if (value !== undefined) {
-          return supabase
-            .from('site_settings')
-            .update({ value })
-            .eq('id', id);
+    if (isSupabaseConfigured) {
+      try {
+        setError(null);
+        for (const [id, value] of Object.entries(updates)) {
+          if (value !== undefined) {
+            await supabase
+              .from('site_settings')
+              .upsert({ id, value: String(value), type: 'text', updated_at: new Date().toISOString() }, { onConflict: 'id' });
+          }
         }
-        return Promise.resolve();
-      });
-
-      await Promise.all(updatePromises);
-      await fetchSiteSettings();
-    } catch (err) {
-      console.error('Error updating site settings:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update site settings');
-      throw err;
+      } catch (err) {
+        console.warn('[SiteSettings] Supabase bulk update error — saved locally:', err);
+        setError(err instanceof Error ? err.message : 'Saved locally only');
+      }
     }
   };
-
-  useEffect(() => {
-    fetchSiteSettings();
-  }, []);
 
   return {
     siteSettings,
@@ -106,6 +125,6 @@ export const useSiteSettings = () => {
     error,
     updateSiteSetting,
     updateSiteSettings,
-    refetch: fetchSiteSettings
+    refetch: fetchSiteSettings,
   };
 };

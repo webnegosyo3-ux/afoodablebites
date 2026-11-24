@@ -1,25 +1,53 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Category } from '../types';
 import { DEFAULT_CATEGORIES } from '../data/defaultMenu';
 
-export { type Category } from '../types';
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  sort_order: number;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+const LOCAL_KEY = 'afoodable_categories_v1';
+
+const loadLocal = (): Category[] | null => {
+  try {
+    const s = localStorage.getItem(LOCAL_KEY);
+    if (s) {
+      const p = JSON.parse(s);
+      if (Array.isArray(p) && p.length > 0) return p;
+    }
+  } catch {}
+  return null;
+};
+
+const saveLocal = (cats: Category[]) => {
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(cats)); } catch {}
+};
 
 export const useCategories = () => {
-  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>(
+    loadLocal() ?? DEFAULT_CATEGORIES
+  );
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
 
-  const fetchCategories = async () => {
+  const persist = useCallback((cats: Category[]) => {
+    saveLocal(cats);
+    setCategories(cats);
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setCategories(DEFAULT_CATEGORIES);
-      setLoading(false);
+      persist(loadLocal() ?? DEFAULT_CATEGORIES);
       return;
     }
-
     try {
       setLoading(true);
-      
       const { data, error: fetchError } = await supabase
         .from('categories')
         .select('*')
@@ -29,123 +57,114 @@ export const useCategories = () => {
       if (fetchError) throw fetchError;
 
       if (!data || data.length === 0) {
-        setCategories(DEFAULT_CATEGORIES);
+        persist(loadLocal() ?? DEFAULT_CATEGORIES);
         return;
       }
 
-      // Remove duplicates by id
-      const uniqueCategories = data.filter((category, index, self) =>
-        index === self.findIndex((c) => c.id === category.id)
-      );
-
-      setCategories(uniqueCategories);
+      // Deduplicate
+      const unique = data.filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i);
+      // Merge local-only categories
+      const local = loadLocal() ?? [];
+      const remoteIds = new Set(unique.map(c => c.id));
+      const localOnly = local.filter(c => !remoteIds.has(c.id));
+      persist([...unique, ...localOnly]);
       setError(null);
     } catch (err) {
-      console.warn('Error fetching categories from Supabase, using defaults:', err);
-      setCategories(DEFAULT_CATEGORIES);
-      setError(err instanceof Error ? err.message : 'Using default categories');
+      console.warn('[Categories] Fetch error, using local cache:', err);
+      const local = loadLocal();
+      if (local) persist(local);
+      setError(err instanceof Error ? err.message : 'Using cached categories');
     } finally {
       setLoading(false);
     }
-  };
+  }, [persist]);
+
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
   const addCategory = async (category: Omit<Category, 'created_at' | 'updated_at'>) => {
-    try {
-      const { data, error: insertError } = await supabase
-        .from('categories')
-        .insert({
-          id: category.id,
-          name: category.name,
-          icon: category.icon,
-          sort_order: category.sort_order,
-          active: category.active
-        })
-        .select()
-        .single();
+    const newCat: Category = { ...category, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    persist([...categories, newCat]);
 
-      if (insertError) throw insertError;
-
-      await fetchCategories();
-      return data;
-    } catch (err) {
-      console.error('Error adding category:', err);
-      throw err;
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error: insertError } = await supabase
+          .from('categories')
+          .insert({ id: category.id, name: category.name, icon: category.icon, sort_order: category.sort_order, active: category.active })
+          .select().single();
+        if (insertError) throw insertError;
+        return data;
+      } catch (err) {
+        console.warn('[Categories] Supabase insert error — saved locally:', err);
+      }
     }
+    return newCat;
   };
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
-    try {
-      const { error: updateError } = await supabase
-        .from('categories')
-        .update({
-          name: updates.name,
-          icon: updates.icon,
-          sort_order: updates.sort_order,
-          active: updates.active
-        })
-        .eq('id', id);
+    const updated = categories.map(c => c.id === id ? { ...c, ...updates, updated_at: new Date().toISOString() } : c);
+    persist(updated);
 
-      if (updateError) throw updateError;
-
-      await fetchCategories();
-    } catch (err) {
-      console.error('Error updating category:', err);
-      throw err;
+    if (isSupabaseConfigured) {
+      try {
+        const { error: updateError } = await supabase
+          .from('categories')
+          .update({ name: updates.name, icon: updates.icon, sort_order: updates.sort_order, active: updates.active })
+          .eq('id', id);
+        if (updateError) throw updateError;
+      } catch (err) {
+        console.warn('[Categories] Supabase update error — saved locally:', err);
+      }
     }
   };
 
   const deleteCategory = async (id: string) => {
+    // Check local items first
+    const LOCAL_MENU_KEY = 'afoodable_menu_items_v1';
     try {
-      const { data: menuItems, error: checkError } = await supabase
-        .from('menu_items')
-        .select('id')
-        .eq('category', id)
-        .limit(1);
-
-      if (checkError) throw checkError;
-
-      if (menuItems && menuItems.length > 0) {
-        throw new Error('Cannot delete category that contains menu items. Please move or delete the items first.');
+      const saved = localStorage.getItem(LOCAL_MENU_KEY);
+      if (saved) {
+        const items = JSON.parse(saved);
+        if (Array.isArray(items) && items.some((i: any) => i.category === id)) {
+          throw new Error('Cannot delete category that contains menu items. Please move or delete the items first.');
+        }
       }
+    } catch (e: any) {
+      if (e.message.includes('Cannot delete')) throw e;
+    }
 
-      const { error: deleteError } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id);
+    persist(categories.filter(c => c.id !== id));
 
-      if (deleteError) throw deleteError;
-
-      await fetchCategories();
-    } catch (err) {
-      console.error('Error deleting category:', err);
-      throw err;
+    if (isSupabaseConfigured) {
+      try {
+        const { data: menuItems, error: checkError } = await supabase
+          .from('menu_items').select('id').eq('category', id).limit(1);
+        if (checkError) throw checkError;
+        if (menuItems && menuItems.length > 0) {
+          throw new Error('Cannot delete category that contains menu items. Please move or delete the items first.');
+        }
+        const { error: deleteError } = await supabase.from('categories').delete().eq('id', id);
+        if (deleteError) throw deleteError;
+      } catch (err) {
+        console.warn('[Categories] Supabase delete error:', err);
+        throw err;
+      }
     }
   };
 
-  const reorderCategories = async (reorderedCategories: Category[]) => {
-    try {
-      const updates = reorderedCategories.map((cat, index) => ({
-        id: cat.id,
-        sort_order: index + 1
-      }));
+  const reorderCategories = async (reordered: Category[]) => {
+    const withOrder = reordered.map((c, i) => ({ ...c, sort_order: i + 1 }));
+    persist(withOrder);
 
-      for (const update of updates) {
-        await supabase
-          .from('categories')
-          .update({ sort_order: update.sort_order })
-          .eq('id', update.id);
+    if (isSupabaseConfigured) {
+      try {
+        for (const c of withOrder) {
+          await supabase.from('categories').update({ sort_order: c.sort_order }).eq('id', c.id);
+        }
+      } catch (err) {
+        console.warn('[Categories] Supabase reorder error:', err);
       }
-
-      await fetchCategories();
-    } catch (err) {
-      console.error('Error reordering categories:', err);
-      throw err;
     }
   };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   return {
     categories,
@@ -155,6 +174,6 @@ export const useCategories = () => {
     updateCategory,
     deleteCategory,
     reorderCategories,
-    refetch: fetchCategories
+    refetch: fetchCategories,
   };
 };

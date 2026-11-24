@@ -1,6 +1,5 @@
-import React, { useRef } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
-import { useImageUpload } from '../hooks/useImageUpload';
+import React, { useRef, useState } from 'react';
+import { Upload, X, Image as ImageIcon, Link } from 'lucide-react';
 
 interface ImageUploadProps {
   currentImage?: string;
@@ -11,99 +10,142 @@ interface ImageUploadProps {
 const ImageUpload: React.FC<ImageUploadProps> = ({
   currentImage,
   onImageChange,
-  className = ''
+  className = '',
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { deleteImage } = useImageUpload();
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [urlInput,  setUrlInput]  = useState('');
+  const [showUrl,   setShowUrl]   = useState(false);
+  const [previewOk, setPreviewOk] = useState(true);
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsLoading(true);
+    // Accept any image, any size — store as base64 in state/localStorage
+    const allowed = ['image/jpeg','image/jpg','image/png','image/webp','image/gif','image/avif','image/svg+xml'];
+    if (!allowed.includes(file.type) && !file.type.startsWith('image/')) {
+      alert('Please select an image file (JPG, PNG, WebP, GIF, etc.)');
+      return;
+    }
 
-    // Use Base64 encoding for immediate preview (works without server)
+    setIsLoading(true);
     const reader = new FileReader();
     reader.onloadend = () => {
       onImageChange(reader.result as string);
+      setPreviewOk(true);
       setIsLoading(false);
     };
     reader.onerror = () => {
-      alert('Failed to read image file');
+      alert('Failed to read image file. Please try another.');
       setIsLoading(false);
     };
     reader.readAsDataURL(file);
 
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    // Reset so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleRemoveImage = async () => {
-    if (currentImage) {
-      try {
-        await deleteImage(currentImage);
-        onImageChange(undefined);
-      } catch (error) {
-        console.error('Error removing image:', error);
-        // Still remove from UI even if deletion fails
-        onImageChange(undefined);
-      }
-    }
+  const handleUrlSubmit = () => {
+    const val = urlInput.trim();
+    if (!val) return;
+    onImageChange(val);
+    setPreviewOk(true);
+    setUrlInput('');
+    setShowUrl(false);
   };
 
-  const triggerFileSelect = () => {
-    fileInputRef.current?.click();
+  const handleRemove = () => {
+    onImageChange(undefined);
+    setPreviewOk(true);
+    setUrlInput('');
   };
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      <label className="block text-sm font-medium text-black mb-2">Menu Item Image</label>
+    <div className={`space-y-3 ${className}`}>
+      <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">
+        Menu Item Image
+      </label>
 
-      {currentImage ? (
-        <div className="relative">
+      {/* ── Preview ── */}
+      {currentImage && previewOk ? (
+        <div className="relative group">
           <img
             src={currentImage}
-            alt="Menu item preview"
-            className="w-full h-48 object-cover rounded-lg border border-gray-300 transition-opacity duration-300"
-            loading="lazy"
-            decoding="async"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-            onLoad={(e) => {
-              e.currentTarget.style.opacity = '1';
-            }}
-            style={{ opacity: 0 }}
+            alt="Preview"
+            onError={() => setPreviewOk(false)}
+            className="w-full h-44 object-cover rounded-xl border border-zinc-700"
           />
           <button
             type="button"
-            onClick={handleRemoveImage}
-            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-200"
-            disabled={isLoading}
+            onClick={handleRemove}
+            className="absolute top-2 right-2 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full shadow transition opacity-0 group-hover:opacity-100"
+            title="Remove image"
           >
-            <X className="h-4 w-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       ) : (
+        /* ── Drop zone / upload prompt ── */
         <div
-          onClick={triggerFileSelect}
-          className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-chick-orange hover:bg-chick-beige transition-all duration-200"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full h-44 border-2 border-dashed border-zinc-700 hover:border-amber-500 rounded-xl flex flex-col items-center justify-center cursor-pointer transition bg-zinc-800/40 hover:bg-zinc-800"
         >
           {isLoading ? (
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-chick-orange mx-auto mb-2"></div>
-              <p className="text-sm text-gray-600">Loading image...</p>
-            </div>
+            <>
+              <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-2" />
+              <p className="text-xs text-zinc-400">Loading image…</p>
+            </>
           ) : (
             <>
-              <ImageIcon className="h-12 w-12 text-gray-400 mb-2" />
-              <p className="text-sm text-gray-600 mb-1 font-medium">📁 Click to upload image</p>
-              <p className="text-xs text-gray-500">All formats & quality accepted</p>
+              <ImageIcon className="w-10 h-10 text-zinc-500 mb-2" />
+              <p className="text-sm font-semibold text-zinc-300">Click to upload image</p>
+              <p className="text-xs text-zinc-500 mt-0.5">JPG, PNG, WebP, GIF — any size</p>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Upload button ── */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isLoading}
+          className="flex-1 flex items-center justify-center space-x-2 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold rounded-xl text-sm transition"
+        >
+          <Upload className="w-4 h-4" />
+          <span>{currentImage && previewOk ? 'Replace Image' : 'Upload Image'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowUrl(v => !v)}
+          className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 hover:text-white rounded-xl text-sm transition"
+          title="Use image URL instead"
+        >
+          <Link className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* ── URL input (collapsible) ── */}
+      {showUrl && (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={urlInput}
+            onChange={e => setUrlInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleUrlSubmit()}
+            placeholder="https://... or /images/..."
+            className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <button
+            type="button"
+            onClick={handleUrlSubmit}
+            className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-sm transition"
+          >
+            Use
+          </button>
         </div>
       )}
 
@@ -115,57 +157,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         className="hidden"
         disabled={isLoading}
       />
-
-      {!currentImage && (
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={triggerFileSelect}
-            disabled={isLoading}
-            className="flex items-center space-x-2 px-4 py-2 bg-chick-gradient text-white rounded-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-          >
-            <Upload className="h-4 w-4" />
-            <span>📁 Upload Image</span>
-          </button>
-          <span className="text-sm text-gray-500">or enter URL below</span>
-        </div>
-      )}
-
-      {/* OR Divider */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 border-t border-gray-300"></div>
-        <span className="text-xs text-gray-500 font-medium">OR</span>
-        <div className="flex-1 border-t border-gray-300"></div>
-      </div>
-
-      {/* URL Input as fallback */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Enter Image URL</label>
-        <input
-          type="text"
-          value={currentImage || ''}
-          onChange={(e) => onImageChange(e.target.value || undefined)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-chick-orange focus:border-transparent"
-          placeholder="/images/chick-central-logo.jpg or https://..."
-          disabled={isLoading}
-        />
-
-        {/* Quick Path Helper */}
-        <button
-          type="button"
-          onClick={() => onImageChange('/images/chick-central-logo.jpg')}
-          className="text-xs px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors"
-        >
-          🍲 Use Afoodable Bites Logo
-        </button>
-
-        <p className="text-xs text-gray-500">
-          💡 <strong>Supports:</strong> All image formats • Any quality/size • Upload file or enter URL
-        </p>
-        <p className="text-xs text-gray-400">
-          ✨ Low quality images are welcome! Upload any image you have.
-        </p>
-      </div>
     </div>
   );
 };
