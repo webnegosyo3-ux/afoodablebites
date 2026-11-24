@@ -682,42 +682,32 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
         </div>
       </div>
 
-      {/* POP-UP MESSAGE: ORDER RECEIPT MODAL */}
+      {/* ORDER RECEIPT MODAL */}
       {showSuccessModal && placedOrder && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-start justify-center z-50 p-4 overflow-y-auto animate-fade-in">
-          <div className="w-full max-w-sm my-4 animate-scale-up">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="w-full max-w-sm my-6 space-y-3">
 
-            {/* Success header above the receipt */}
-            <div className="bg-zinc-900 rounded-t-3xl px-5 pt-5 pb-3 text-center border-x-2 border-t-2 border-amber-400">
-              <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-xl flex items-center justify-center">
-                <div className="w-full h-full bg-zinc-900 rounded-full flex items-center justify-center">
-                  <span className="text-3xl animate-bounce">🎉</span>
-                </div>
-              </div>
-              <h2 className="text-lg font-black text-white tracking-tight">Order Confirmed!</h2>
-              <p className="text-zinc-400 text-xs mt-0.5">Your receipt is ready below</p>
+            {/* Title */}
+            <div className="text-center">
+              <p className="text-2xl font-black text-white">Order Confirmed! 🎉</p>
+              <p className="text-zinc-300 text-sm mt-0.5">Your receipt is ready below</p>
             </div>
 
-            {/* Receipt */}
-            <div className="border-x-2 border-amber-400 px-3 pb-3 bg-zinc-100">
-              <OrderReceipt
-                order={placedOrder}
-                showPhotoReminder={true}
-                showCopyButton={true}
-              />
-            </div>
+            {/* Receipt + photo reminder + copy button */}
+            <OrderReceipt
+              order={placedOrder}
+              showPhotoReminder={true}
+              showCopyButton={true}
+            />
 
-            {/* Action buttons */}
-            <div className="bg-zinc-900 rounded-b-3xl px-5 pb-5 pt-3 border-x-2 border-b-2 border-amber-400 space-y-2">
-              <button
-                type="button"
-                onClick={handleFinishOrder}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl font-black text-sm hover:shadow-xl transition-all duration-200 active:scale-95 shadow-md flex items-center justify-center space-x-2"
-              >
-                <span>Bumalik sa Main Page</span>
-                <span>🏠</span>
-              </button>
-            </div>
+            {/* Back to main button */}
+            <button
+              type="button"
+              onClick={handleFinishOrder}
+              className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-black text-base transition-all active:scale-95 shadow-md"
+            >
+              Bumalik sa Main Page 🏠
+            </button>
 
           </div>
         </div>
