@@ -177,10 +177,20 @@ export const useOrders = () => {
 
       if (data && Array.isArray(data)) {
         const mapped = data.map(mapRow);
-        saveLocalOrders(mapped);
-        notifySubscribers(mapped);
+
+        // Merge with local orders so anything saved locally but not yet in
+        // Supabase (e.g. insert failed silently) is never wiped by a poll.
+        const localOrders = loadLocalOrders();
+        const remoteIds = new Set(mapped.map((o) => o.id));
+        const localOnly = localOrders.filter((o) => !remoteIds.has(o.id));
+        const merged = [...mapped, ...localOnly].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        saveLocalOrders(merged);
+        notifySubscribers(merged);
         // Keep selfKnownIds up to date so we don't self-alert on existing rows
-        mapped.forEach((o) => selfKnownIdsRef.current.add(o.id));
+        merged.forEach((o) => selfKnownIdsRef.current.add(o.id));
       }
     } catch (err) {
       console.warn('[Orders] Fetch error:', err);
