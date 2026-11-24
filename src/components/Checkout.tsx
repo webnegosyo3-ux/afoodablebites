@@ -3,6 +3,7 @@ import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Chec
 import { CartItem, ServiceType, AdminOrder } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useOrders } from '../hooks/useOrders';
+import OrderReceipt from './OrderReceipt';
 
 interface CheckoutProps {
   cartItems: CartItem[];
@@ -698,33 +699,46 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
         </div>
       </div>
 
-      {/* POP-UP MESSAGE: ORDER SENT MODAL */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 sm:p-8 shadow-2xl border-2 border-amber-400 text-center relative overflow-hidden animate-scale-up">
-            {/* Top decorative banner */}
-            <div className="absolute top-0 left-0 right-0 h-2.5 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
+      {/* POP-UP MESSAGE: ORDER RECEIPT MODAL */}
+      {showSuccessModal && placedOrder && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-start justify-center z-50 p-4 overflow-y-auto animate-fade-in">
+          <div className="w-full max-w-sm my-4 animate-scale-up">
 
-            {/* Glowing Success Badge */}
-            <div className="w-20 h-20 mx-auto my-3 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-1 shadow-xl flex items-center justify-center">
-              <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                <span className="text-4xl animate-bounce">🎉</span>
+            {/* Success header above the receipt */}
+            <div className="bg-zinc-900 rounded-t-3xl px-5 pt-5 pb-3 text-center border-x-2 border-t-2 border-amber-400">
+              <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-xl flex items-center justify-center">
+                <div className="w-full h-full bg-zinc-900 rounded-full flex items-center justify-center">
+                  <span className="text-3xl animate-bounce">🎉</span>
+                </div>
               </div>
+              <h2 className="text-lg font-black text-white tracking-tight">Order Confirmed!</h2>
+              <p className="text-zinc-400 text-xs mt-0.5">Your receipt is ready below</p>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight my-4">
-              Congrats, your order is sent!
-            </h2>
+            {/* Receipt */}
+            <div className="border-x-2 border-amber-400 px-3 pb-3 bg-zinc-100">
+              <OrderReceipt
+                order={placedOrder}
+                showPhotoReminder={true}
+                showCopyButton={true}
+              />
+            </div>
 
-            {/* Back to Main Button */}
-            <button
-              type="button"
-              onClick={handleFinishOrder}
-              className="w-full mt-2 py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl font-black text-sm sm:text-base hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md flex items-center justify-center space-x-2"
-            >
-              <span>Bumalik sa Main Page</span>
-              <span>🏠</span>
-            </button>
+            {/* Action buttons */}
+            <div className="bg-zinc-900 rounded-b-3xl px-5 pb-5 pt-3 border-x-2 border-b-2 border-amber-400 space-y-2">
+              <button
+                type="button"
+                onClick={handleFinishOrder}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-xl font-black text-sm hover:shadow-xl transition-all duration-200 active:scale-95 shadow-md flex items-center justify-center space-x-2"
+              >
+                <span>Bumalik sa Main Page</span>
+                <span>🏠</span>
+              </button>
+              <p className="text-zinc-500 text-[10px] text-center">
+                Auto-redirecting in {countdown}s...
+              </p>
+            </div>
+
           </div>
         </div>
       )}

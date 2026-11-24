@@ -16,7 +16,9 @@ import {
   RotateCcw,
   Bell,
   BellOff,
-  Menu
+  Menu,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
 import { AdminOrder, OrderStatus } from '../types';
@@ -26,6 +28,7 @@ import {
   testOrderChime, 
   stopOrderRingtone 
 } from '../utils/audioAlert';
+import { buildTextReceipt } from './OrderReceipt';
 
 interface OrdersManagerProps {
   onBack: () => void;
@@ -68,6 +71,27 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
   const [filterStatus, setFilterStatus] = useState<'all' | OrderStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(isSoundAlertEnabled());
+  const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
+
+  const handleCopyReceipt = (order: AdminOrder) => {
+    const text = buildTextReceipt(order);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedOrderId(order.id);
+      setTimeout(() => setCopiedOrderId(null), 2500);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedOrderId(order.id);
+      setTimeout(() => setCopiedOrderId(null), 2500);
+    });
+  };
 
   const handleToggleSound = () => {
     const next = !soundEnabled;
@@ -365,6 +389,22 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
                         title="Delete order"
                       >
                         <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyReceipt(order)}
+                        title="Copy receipt as text"
+                        className={`p-1.5 rounded-lg transition flex items-center space-x-1 text-xs font-bold border ${
+                          copiedOrderId === order.id
+                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                            : 'bg-zinc-800 text-zinc-400 hover:text-amber-400 border-zinc-700 hover:border-amber-500/40'
+                        }`}
+                      >
+                        {copiedOrderId === order.id
+                          ? <><Check className="w-3.5 h-3.5" /><span className="hidden sm:inline">Copied!</span></>
+                          : <><Copy className="w-3.5 h-3.5" /><span className="hidden sm:inline">Copy Receipt</span></>
+                        }
                       </button>
                     </div>
                   </div>
