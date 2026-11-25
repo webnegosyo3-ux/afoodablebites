@@ -117,23 +117,31 @@ export const useMenu = () => {
       const local = loadLocal() ?? [];
       const localMap = new Map(local.map(i => [i.id, i]));
 
-      // Merge intelligent: do NOT let stale remote data overwrite newer local edits!
+      // For each remote item, prefer the LOCAL image if:
+      //  1. Local has a base64 image (data:...) — these can never be in Supabase
+      //  2. Local has ANY image and remote has none
+      //  3. Local image differs from remote (admin edited it locally)
+      // For all other fields (name, price, etc.) use the remote value as source of truth.
       const merged = formatted.map(remoteItem => {
         const localItem = localMap.get(remoteItem.id);
-        if (localItem) {
-          // If local has newer timestamp or local custom image/data, preserve local version
-          if (localItem.updatedAt && (!remoteItem.updatedAt || new Date(localItem.updatedAt) >= new Date(remoteItem.updatedAt))) {
-            return localItem;
-          }
-          // If local has image but remote doesn't, keep local image
-          if (localItem.image && !remoteItem.image) {
-            return { ...remoteItem, image: localItem.image, variations: localItem.variations || remoteItem.variations, addOns: localItem.addOns || remoteItem.addOns };
-          }
-        }
-        return remoteItem;
+        if (!localItem) return remoteItem;
+
+        const localImg  = localItem.image;
+        const remoteImg = remoteItem.image;
+
+        const keepLocalImage =
+          localImg && (
+            localImg.startsWith('data:') ||   // base64 — never in Supabase
+            !remoteImg ||                      // remote has no image yet
+            localImg !== remoteImg             // admin changed it locally
+          );
+
+        return keepLocalImage
+          ? { ...remoteItem, image: localImg }
+          : remoteItem;
       });
 
-      // Also preserve items that only exist in local storage (e.g. newly added offline/un-synced)
+      // Also preserve items that only exist locally (added offline / not yet synced)
       const remoteIds = new Set(formatted.map(i => i.id));
       const localOnly = local.filter(i => !remoteIds.has(i.id));
 
@@ -199,6 +207,11 @@ export const useMenu = () => {
 
     if (isSupabaseConfigured) {
       try {
+        const imageForSupabase =
+          item.image && item.image.startsWith('data:')
+            ? null
+            : (item.image || null);
+
         const { data, error: insertError } = await supabase
           .from('menu_items')
           .upsert({
@@ -209,7 +222,7 @@ export const useMenu = () => {
             category:           item.category,
             popular:            item.popular    || false,
             available:          item.available  ?? true,
-            image_url:          item.image      || null,
+            image_url:          imageForSupabase,
             discount_price:     item.discountPrice     || null,
             discount_start_date:item.discountStartDate || null,
             discount_end_date:  item.discountEndDate   || null,
@@ -265,6 +278,12 @@ export const useMenu = () => {
         if (!targetItem) return;
 
         // Use UPSERT so existing default items (e.g. sizzling-pork-sisig) are inserted/updated cleanly
+        // Skip base64 images — too large for Supabase; kept in localStorage only
+        const imageForSupabase =
+          targetItem.image && targetItem.image.startsWith('data:')
+            ? null
+            : (targetItem.image || null);
+
         const { error: upsertError } = await supabase
           .from('menu_items')
           .upsert({
@@ -275,7 +294,7 @@ export const useMenu = () => {
             category:           targetItem.category,
             popular:            targetItem.popular    || false,
             available:          targetItem.available  ?? true,
-            image_url:          targetItem.image      || null,
+            image_url:          imageForSupabase,
             discount_price:     targetItem.discountPrice     || null,
             discount_start_date:targetItem.discountStartDate || null,
             discount_end_date:  targetItem.discountEndDate   || null,
