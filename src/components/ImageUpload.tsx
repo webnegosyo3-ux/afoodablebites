@@ -6,82 +6,90 @@ interface ImageUploadProps {
   currentImage?: string;
   onImageChange: (imageUrl: string | undefined) => void;
   className?: string;
+  /** Max output width in px (default 800 for menu items) */
+  maxWidth?: number;
+  /** Max output height in px (default 600 for menu items) */
+  maxHeight?: number;
+  /** JPEG quality 0–1 (default 0.78) */
+  quality?: number;
+  /** Label shown in the size hint badge */
+  sizeHint?: string;
+  /** Short description shown below the size hint */
+  sizeNote?: string;
 }
 
-/**
- * Compresses an image file on client-side canvas to max 1000x800 and ~0.82 quality JPEG.
- * This shrinks a 5MB phone photo down to ~60KB-90KB, preventing localStorage QuotaExceededError
- * and preventing Supabase 413 Payload Too Large errors!
- */
-const compressImageFile = (file: File, maxWidth = 1000, maxHeight = 800, quality = 0.82): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    // If SVG, return direct text/base64 without canvas
+// ── Client-side canvas compression ───────────────────────────────────────────
+const compressImage = (
+  file: File,
+  maxWidth: number,
+  maxHeight: number,
+  quality: number
+): Promise<string> =>
+  new Promise((resolve, reject) => {
     if (file.type === 'image/svg+xml') {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(file);
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = (readerEvent) => {
+    reader.onerror = reject;
+    reader.onload = (ev) => {
       const img = new Image();
+      img.onerror = reject;
       img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+        let w = img.width;
+        let h = img.height;
 
-        // Scale proportionally if larger than maximum dimensions
-        if (width > maxWidth || height > maxHeight) {
-          if (width / height > maxWidth / maxHeight) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
+        if (w > maxWidth || h > maxHeight) {
+          if (w / h > maxWidth / maxHeight) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
           } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
+            w = Math.round((w * maxHeight) / h);
+            h = maxHeight;
           }
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width  = w;
+        canvas.height = h;
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(readerEvent.target?.result as string);
-          return;
-        }
+        if (!ctx) { resolve(ev.target?.result as string); return; }
 
-        // Draw image smoothly
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Export as lightweight JPEG
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedBase64);
+        ctx.imageSmoothingEnabled  = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
       };
-      img.onerror = reject;
-      img.src = readerEvent.target?.result as string;
+      img.src = ev.target?.result as string;
     };
-    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-};
 
+// ── Component ─────────────────────────────────────────────────────────────────
 const ImageUpload: React.FC<ImageUploadProps> = ({
   currentImage,
   onImageChange,
   className = '',
+  maxWidth  = 800,
+  maxHeight = 600,
+  quality   = 0.78,
+  sizeHint  = '800 × 600 px',
+  sizeNote  = 'Square o landscape • JPG, PNG, WebP',
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [urlInput,  setUrlInput]  = useState('');
-  const [showUrl,   setShowUrl]   = useState(false);
-  const [previewOk, setPreviewOk] = useState(true);
+  const [isLoading,    setIsLoading]    = useState(false);
+  const [urlInput,     setUrlInput]     = useState('');
+  const [showUrl,      setShowUrl]      = useState(false);
+  const [previewOk,    setPreviewOk]    = useState(true);
   const [fileSizeNote, setFileSizeNote] = useState<string | null>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) {
       alert('Mangyaring pumili ng larawan (JPG, PNG, WebP, GIF, etc.)');
       return;
@@ -91,48 +99,35 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     setFileSizeNote(null);
 
     try {
-      // 1. Compress image client-side to lightweight high-res JPEG (~60-90KB)
-      const compressedDataUrl = await compressImageFile(file, 1000, 800, 0.82);
-      const estKb = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
-      setFileSizeNote(`Na-optimize: ~${estKb} KB`);
+      const compressed = await compressImage(file, maxWidth, maxHeight, quality);
+      const estKb = Math.round((compressed.length * 3) / 4 / 1024);
+      setFileSizeNote(`✓ Na-optimize: ~${estKb} KB`);
 
-      // 2. If Supabase Storage bucket 'menu-images' is available, try uploading as real URL
-      let finalImageUrl = compressedDataUrl;
+      // Try Supabase Storage first; fall back to base64 silently
+      let finalUrl = compressed;
       if (isSupabaseConfigured) {
         try {
-          const fileExt = file.name.split('.').pop() || 'jpg';
-          const fileName = `item-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-          
-          // Convert dataURL to Blob for storage upload
-          const res = await fetch(compressedDataUrl);
+          const ext      = file.name.split('.').pop() || 'jpg';
+          const fileName = `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const res  = await fetch(compressed);
           const blob = await res.blob();
-
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { data: up, error: upErr } = await supabase.storage
             .from('menu-images')
-            .upload(fileName, blob, {
-              cacheControl: '31536000',
-              upsert: true,
-              contentType: 'image/jpeg'
-            });
-
-          if (!uploadError && uploadData?.path) {
+            .upload(fileName, blob, { cacheControl: '31536000', upsert: true, contentType: 'image/jpeg' });
+          if (!upErr && up?.path) {
             const { data: { publicUrl } } = supabase.storage
               .from('menu-images')
-              .getPublicUrl(uploadData.path);
-            if (publicUrl) {
-              finalImageUrl = publicUrl;
-            }
+              .getPublicUrl(up.path);
+            if (publicUrl) finalUrl = publicUrl;
           }
-        } catch {
-          // Fallback to high-quality compressed data URL seamlessly
-        }
+        } catch { /* silent — stay with base64 */ }
       }
 
-      onImageChange(finalImageUrl);
+      onImageChange(finalUrl);
       setPreviewOk(true);
     } catch (err) {
-      console.error('Image compression error:', err);
-      alert('Hindi ma-process ang larawan. Subukan ang ibang image file.');
+      console.error('Image error:', err);
+      alert('Hindi ma-process ang larawan. Subukan ang ibang file.');
     } finally {
       setIsLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -146,50 +141,55 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     setPreviewOk(true);
     setUrlInput('');
     setShowUrl(false);
-    setFileSizeNote('URL Linked');
+    setFileSizeNote('URL Linked ✓');
   };
 
   const handleRemove = () => {
     onImageChange(undefined);
     setPreviewOk(true);
-    setUrlInput('');
     setFileSizeNote(null);
   };
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className="flex items-center justify-between">
-        <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">
-          Menu Item Image
+
+      {/* Header: label + size badge */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+          Image
         </label>
-        {fileSizeNote && (
-          <span className="text-[11px] font-bold text-emerald-400 flex items-center space-x-1">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>{fileSizeNote}</span>
-          </span>
-        )}
+        <span className="inline-flex items-center space-x-1 text-[11px] font-black text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full">
+          <span>📐</span>
+          <span>Required: {sizeHint}</span>
+        </span>
       </div>
 
-      {/* ── Preview ── */}
+      {/* Size note */}
+      <p className="text-[11px] text-zinc-500">{sizeNote} — awtomatikong ia-resize at ia-compress bago i-save.</p>
+
+      {/* Preview */}
       {currentImage && previewOk ? (
         <div className="relative group">
           <img
             src={currentImage}
             alt="Preview"
             onError={() => setPreviewOk(false)}
-            className="w-full h-48 object-cover rounded-xl border border-zinc-700 bg-zinc-900"
+            className="w-full h-44 object-cover rounded-xl border border-zinc-700 bg-zinc-900"
           />
           <button
             type="button"
             onClick={handleRemove}
             className="absolute top-2 right-2 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full shadow transition opacity-80 group-hover:opacity-100"
-            title="Remove image"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
+          {fileSizeNote && (
+            <span className="absolute bottom-2 left-2 text-[10px] font-bold bg-black/60 text-emerald-400 px-2 py-0.5 rounded-full">
+              {fileSizeNote}
+            </span>
+          )}
         </div>
       ) : (
-        /* ── Drop zone / upload prompt ── */
         <div
           onClick={() => fileInputRef.current?.click()}
           className="w-full h-44 border-2 border-dashed border-zinc-700 hover:border-amber-500 rounded-xl flex flex-col items-center justify-center cursor-pointer transition bg-zinc-800/40 hover:bg-zinc-800 p-4 text-center"
@@ -197,26 +197,28 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           {isLoading ? (
             <>
               <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs text-zinc-300 font-bold">Ina-optimize at sine-save ang image…</p>
-              <p className="text-[11px] text-zinc-500">Ito ay tumatagal ng 1-2 segundo lamang.</p>
+              <p className="text-xs text-zinc-300 font-semibold">Ina-compress at sine-save…</p>
+              <p className="text-[11px] text-zinc-500 mt-0.5">Ilang segundo lamang.</p>
             </>
           ) : (
             <>
-              <ImageIcon className="w-10 h-10 text-zinc-500 mb-2" />
-              <p className="text-sm font-semibold text-zinc-300">I-click upang mag-upload ng image</p>
-              <p className="text-xs text-zinc-500 mt-0.5">Kahit anong picture (JPG, PNG, WebP) — awtomatikong ia-adjust para mabilis mag-load at ma-save</p>
+              <ImageIcon className="w-10 h-10 text-zinc-600 mb-2" />
+              <p className="text-sm font-semibold text-zinc-300">I-click para mag-upload</p>
+              <p className="text-[11px] text-zinc-500 mt-0.5">
+                Max recommended: <strong className="text-zinc-400">{sizeHint}</strong>
+              </p>
             </>
           )}
         </div>
       )}
 
-      {/* ── Upload & URL Actions ── */}
+      {/* Buttons row */}
       <div className="flex gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading}
-          className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold rounded-xl text-sm transition shadow-sm active:scale-95"
+          className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold rounded-xl text-sm transition active:scale-95"
         >
           <Upload className="w-4 h-4" />
           <span>{currentImage && previewOk ? 'Palitan ang Image' : 'Mag-upload ng Image'}</span>
@@ -225,20 +227,20 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         <button
           type="button"
           onClick={() => setShowUrl(v => !v)}
-          className={`px-3 py-2.5 border rounded-xl text-sm transition flex items-center justify-center ${
+          title="Maglagay ng Image URL"
+          className={`px-3 py-2.5 border rounded-xl text-sm transition ${
             showUrl
               ? 'bg-amber-500/20 border-amber-500 text-amber-300'
               : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-300 hover:text-white'
           }`}
-          title="Maglagay ng Image URL"
         >
           <Link className="w-4 h-4" />
         </button>
       </div>
 
-      {/* ── URL input (collapsible) ── */}
+      {/* URL input */}
       {showUrl && (
-        <div className="flex gap-2 animate-fade-in">
+        <div className="flex gap-2">
           <input
             type="text"
             value={urlInput}

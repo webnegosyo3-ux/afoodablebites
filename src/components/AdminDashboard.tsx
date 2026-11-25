@@ -858,7 +858,15 @@ const AdminDashboard: React.FC = () => {
           {/* Item Image */}
           <div className={cardCls}>
             <h3 className={sectionTitleCls}><span>🖼️</span><span>Item Image</span></h3>
-            <ImageUpload currentImage={formData.image} onImageChange={imageUrl => setFormData({ ...formData, image: imageUrl })} />
+            <ImageUpload
+              currentImage={formData.image}
+              onImageChange={imageUrl => setFormData({ ...formData, image: imageUrl })}
+              maxWidth={800}
+              maxHeight={600}
+              quality={0.78}
+              sizeHint="800 × 600 px"
+              sizeNote="Square o landscape na litrato ng pagkain • JPG, PNG, WebP"
+            />
           </div>
 
           {/* Discount Pricing */}

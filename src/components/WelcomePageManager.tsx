@@ -20,8 +20,8 @@ import {
   Menu
 } from 'lucide-react';
 import { useWelcomePage } from '../hooks/useWelcomePage';
-import { useImageUpload } from '../hooks/useImageUpload';
 import { WelcomeSlide } from '../types';
+import ImageUpload from './ImageUpload';
 
 interface WelcomePageManagerProps {
   onBack: () => void;
@@ -49,8 +49,6 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack, onOpenS
     reorderSlides, 
     resetToDefaults 
   } = useWelcomePage();
-
-  const { uploadImage, uploading, uploadProgress } = useImageUpload();
 
   // General Settings state
   const [generalSettings, setGeneralSettings] = useState({
@@ -127,19 +125,6 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack, onOpenS
       image: slide.image
     });
     setIsCreatingSlide(true);
-  };
-
-  // Handle Image Upload for Slide
-  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const publicUrl = await uploadImage(file);
-      setSlideForm(prev => ({ ...prev, image: publicUrl }));
-    } catch (err) {
-      alert('Failed to upload image: ' + (err instanceof Error ? err.message : 'Unknown error'));
-    }
   };
 
   // Save Slide (Add or Update)
@@ -632,66 +617,16 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack, onOpenS
               </div>
 
               {/* Image Input & Upload */}
-              <div className="space-y-3 pt-1">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Promo Image *
-                  </label>
-                  <span className="text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full inline-flex items-center space-x-1">
-                    <span>📐 Required Size:</span>
-                    <strong>1200 × 800 px (16:9 / 4:3)</strong>
-                  </span>
-                </div>
-
-                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-[11px] text-zinc-600 space-y-0.5">
-                  <p><strong>Recommended Resolution:</strong> 1200 × 800 px o 1920 × 1080 px (Landscape / Pahalang).</p>
-                  <p><strong>Minimum Resolution:</strong> 800 × 600 px • <strong>Formats:</strong> JPG, PNG, WebP (Max 5MB)</p>
-                </div>
-
-                {/* Upload File Button */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  <label className="cursor-pointer px-4 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl border border-zinc-300 text-xs font-bold flex items-center justify-center space-x-2 transition-colors">
-                    <Upload className="w-4 h-4 text-orange-600" />
-                    <span>{uploading ? `Uploading (${uploadProgress}%)` : 'Upload from Device'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={uploading}
-                      onChange={handleImageFileChange}
-                      className="hidden"
-                    />
-                  </label>
-                  <span className="text-xs text-gray-400 text-center sm:text-left">OR paste URL:</span>
-                  <input
-                    type="url"
-                    value={slideForm.image}
-                    onChange={(e) => setSlideForm(prev => ({ ...prev, image: e.target.value }))}
-                    placeholder="https://images.unsplash.com/..."
-                    className="flex-1 px-3.5 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none"
-                  />
-                </div>
-
-                {/* Image Live Preview */}
-                {slideForm.image && (
-                  <div className="relative mt-3 rounded-2xl overflow-hidden h-44 bg-zinc-950 border border-gray-300 shadow-inner group">
-                    <img 
-                      src={slideForm.image} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = '/images/afodable-bites-logo.jpg';
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
-                      <div>
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase mb-1 ${slideForm.badgeColor}`}>
-                          {slideForm.badge}
-                        </span>
-                        <p className="text-white font-bold text-sm truncate">{slideForm.title || 'Your Slide Title'}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <div className="space-y-2 pt-1">
+                <ImageUpload
+                  currentImage={slideForm.image || undefined}
+                  onImageChange={(url) => setSlideForm(prev => ({ ...prev, image: url || '' }))}
+                  maxWidth={1280}
+                  maxHeight={720}
+                  quality={0.85}
+                  sizeHint="1280 × 720 px (16:9)"
+                  sizeNote="Landscape na larawan para sa slideshow • JPG, PNG, WebP"
+                />
               </div>
 
               {/* Form Buttons */}
@@ -706,7 +641,7 @@ const WelcomePageManager: React.FC<WelcomePageManagerProps> = ({ onBack, onOpenS
                 </button>
                 <button
                   type="submit"
-                  disabled={isSavingSlide || uploading}
+                  disabled={isSavingSlide}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-bold text-sm hover:from-amber-600 hover:to-red-600 shadow-md transition-all flex items-center space-x-2 disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
