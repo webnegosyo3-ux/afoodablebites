@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Save, Upload, X, Loader, Flame } from 'lucide-react';
+import { Save, Upload, X, Loader, Flame, QrCode, Printer } from 'lucide-react';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { useImageUpload } from '../hooks/useImageUpload';
+import QRCodeDisplay from './QRCodeDisplay';
 
 const inputCls =
   'w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition';
@@ -219,6 +220,43 @@ const SiteSettingsManager: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* ── QR Code Section ── */}
+        <div className="border-t border-zinc-800 pt-6 space-y-4">
+          <div className="flex items-center space-x-2">
+            <QrCode className="w-5 h-5 text-amber-500" />
+            <h3 className="text-base font-bold text-white">Website QR Code</h3>
+          </div>
+          <p className="text-xs text-zinc-400">
+            I-print o i-display ang QR code na ito sa inyong tindahan. 
+            I-scan ng customers para maabot ang online ordering page.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <QRCodeDisplay size={220} />
+
+            <div className="space-y-3">
+              <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-xs space-y-1">
+                <p className="text-zinc-400">Points to:</p>
+                <p className="text-amber-400 font-mono font-bold break-all">https://afoodablebites.vercel.app/</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex items-center space-x-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-sm transition active:scale-95"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print QR Code</span>
+              </button>
+
+              <p className="text-[11px] text-zinc-500">
+                💡 Right-click the QR image → "Save image as…" to download it.
+              </p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
