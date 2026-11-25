@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MenuItem } from '../types';
 import { DEFAULT_MENU_ITEMS } from '../data/defaultMenu';
 
-const LOCAL_KEY = 'afoodable_menu_items_v1';
+const LOCAL_KEY = 'afoodable_menu_items_v2'; // bumped from v1 — clears old cached images
 const MENU_UPDATE_EVENT = 'afoodable_menu_updated';
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -99,49 +99,79 @@ export const useMenu = () => {
 
     try {
       setLoading(true);
+
+      // ── Step 1: fetch menu_items alone (no joins) ────────────────────────
+      // Joining variations/add_ons via the PostgREST embed syntax causes a
+      // 500 when the FK relationship isn't registered in the schema cache.
+      // We fetch them in separate, independent queries instead.
       const { data: items, error: itemsError } = await supabase
         .from('menu_items')
-        .select('*, variations (*), add_ons (*)')
+        .select('*')
         .order('created_at', { ascending: true });
 
       if (itemsError) throw itemsError;
 
       if (!items || items.length === 0) {
-        // Keep local edits rather than wiping with empty
         const local = loadLocal();
         persist(local ?? DEFAULT_MENU_ITEMS);
         return;
       }
 
-      const formatted = items.map(mapRow);
+      // ── Step 2: fetch variations (best-effort — ignore if table missing) ─
+      let variationsMap: Record<string, any[]> = {};
+      try {
+        const { data: vars } = await supabase
+          .from('variations')
+          .select('*');
+        if (vars) {
+          vars.forEach(v => {
+            if (!variationsMap[v.menu_item_id]) variationsMap[v.menu_item_id] = [];
+            variationsMap[v.menu_item_id].push(v);
+          });
+        }
+      } catch { /* table missing or permission error — skip */ }
+
+      // ── Step 3: fetch add_ons (best-effort) ──────────────────────────────
+      let addOnsMap: Record<string, any[]> = {};
+      try {
+        const { data: addons } = await supabase
+          .from('add_ons')
+          .select('*');
+        if (addons) {
+          addons.forEach(a => {
+            if (!addOnsMap[a.menu_item_id]) addOnsMap[a.menu_item_id] = [];
+            addOnsMap[a.menu_item_id].push(a);
+          });
+        }
+      } catch { /* table missing or permission error — skip */ }
+
+      // ── Step 4: attach variations + add_ons to each item, then map ───────
+      const enriched = items.map(item => ({
+        ...item,
+        variations: variationsMap[item.id] ?? [],
+        add_ons:    addOnsMap[item.id]    ?? [],
+      }));
+
+      const formatted = enriched.map(mapRow);
       const local = loadLocal() ?? [];
       const localMap = new Map(local.map(i => [i.id, i]));
 
-      // For each remote item, prefer the LOCAL image if:
-      //  1. Local has a base64 image (data:...) — these can never be in Supabase
-      //  2. Local has ANY image and remote has none
-      //  3. Local image differs from remote (admin edited it locally)
-      // For all other fields (name, price, etc.) use the remote value as source of truth.
+      // Prefer local image over remote (base64, or admin-edited URL)
       const merged = formatted.map(remoteItem => {
         const localItem = localMap.get(remoteItem.id);
         if (!localItem) return remoteItem;
-
         const localImg  = localItem.image;
         const remoteImg = remoteItem.image;
-
         const keepLocalImage =
           localImg && (
-            localImg.startsWith('data:') ||   // base64 — never in Supabase
-            !remoteImg ||                      // remote has no image yet
-            localImg !== remoteImg             // admin changed it locally
+            localImg.startsWith('data:') ||
+            !remoteImg ||
+            localImg !== remoteImg
           );
-
-        return keepLocalImage
-          ? { ...remoteItem, image: localImg }
-          : remoteItem;
+        return keepLocalImage ? { ...remoteItem, image: localImg } : remoteItem;
       });
 
-      // Also preserve items that only exist locally (added offline / not yet synced)
+      // Keep local-only items (not yet synced to Supabase)
       const remoteIds = new Set(formatted.map(i => i.id));
       const localOnly = local.filter(i => !remoteIds.has(i.id));
 

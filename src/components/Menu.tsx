@@ -10,6 +10,7 @@ interface MenuProps {
   cartItems: CartItem[];
   updateQuantity: (id: string, quantity: number) => void;
   selectedCategory?: string;
+  searchQuery?: string;
 }
 
 interface CategoryRowProps {
@@ -139,13 +140,44 @@ const Menu: React.FC<MenuProps> = ({
   addToCart, 
   cartItems, 
   updateQuantity, 
-  selectedCategory = 'all' 
+  selectedCategory = 'all',
+  searchQuery = ''
 }) => {
   const { categories, loading: categoriesLoading } = useCategories();
+
+  const q = searchQuery.trim().toLowerCase();
 
   const filteredCategories = React.useMemo(() => {
     return categories.filter(category => selectedCategory === 'all' || category.id === selectedCategory);
   }, [categories, selectedCategory]);
+
+  // When searching, show all categories that have matching items
+  const categoriesToShow = React.useMemo(() => {
+    if (!q) return filteredCategories;
+    return categories.filter(cat => {
+      if (selectedCategory !== 'all' && cat.id !== selectedCategory) return false;
+      return menuItems.some(item =>
+        item.category === cat.id &&
+        (item.name.toLowerCase().includes(q) || item.description.toLowerCase().includes(q))
+      );
+    });
+  }, [categories, selectedCategory, menuItems, q]);
+
+  const getItemsForCategory = (categoryId: string) => {
+    const base = menuItems.filter(item => item.category === categoryId);
+    if (!q) return base;
+    return base.filter(item =>
+      item.name.toLowerCase().includes(q) ||
+      item.description.toLowerCase().includes(q)
+    );
+  };
+
+  const totalResults = q
+    ? menuItems.filter(item =>
+        item.name.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q)
+      ).length
+    : null;
 
   return (
     <main id="menu-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -168,22 +200,41 @@ const Menu: React.FC<MenuProps> = ({
           ))}
         </div>
       ) : (
-        filteredCategories.map((category) => {
-          const categoryItems = menuItems.filter(item => item.category === category.id);
-          
-          if (categoryItems.length === 0) return null;
-          
-          return (
-            <CategoryRow
-              key={category.id}
-              category={category}
-              items={categoryItems}
-              cartItems={cartItems}
-              addToCart={addToCart}
-              updateQuantity={updateQuantity}
-            />
-          );
-        })
+        <>
+          {/* Search results count */}
+          {q && (
+            <div className="mb-4 text-sm text-zinc-500">
+              {totalResults === 0
+                ? `Walang nahanap para sa "${searchQuery}"`
+                : `${totalResults} resulta para sa "${searchQuery}"`}
+            </div>
+          )}
+
+          {categoriesToShow.map((category) => {
+            const categoryItems = getItemsForCategory(category.id);
+            if (categoryItems.length === 0) return null;
+            return (
+              <CategoryRow
+                key={category.id}
+                category={category}
+                items={categoryItems}
+                cartItems={cartItems}
+                addToCart={addToCart}
+                updateQuantity={updateQuantity}
+              />
+            );
+          })}
+
+          {q && totalResults === 0 && (
+            <div className="bg-white rounded-3xl p-12 text-center space-y-3 border border-zinc-200">
+              <div className="text-5xl">🔍</div>
+              <h3 className="text-lg font-bold text-zinc-700">Walang nahanap</h3>
+              <p className="text-sm text-zinc-400">
+                Walang menu item na tugma sa "<strong>{searchQuery}</strong>". Subukan ang ibang salita.
+              </p>
+            </div>
+          )}
+        </>
       )}
     </main>
   );

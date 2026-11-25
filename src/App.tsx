@@ -17,9 +17,11 @@ function MainApp() {
   // Starts on pure 'welcome' page first (no header, no footer)
   const [currentView, setCurrentView] = useState<'welcome' | 'menu' | 'cart' | 'checkout'>('welcome');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleViewChange = (view: 'welcome' | 'menu' | 'cart' | 'checkout') => {
     setCurrentView(view);
+    if (view !== 'menu') setSearchQuery('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -49,6 +51,7 @@ function MainApp() {
           handleCategoryClick(catId);
           if (currentView !== 'menu') handleViewChange('menu');
         }}
+        onSearch={(q) => setSearchQuery(q)}
       />
 
       {/* Menu View (Header Section + All Menus) */}
@@ -67,6 +70,7 @@ function MainApp() {
             cartItems={cart.cartItems}
             updateQuantity={cart.updateQuantity}
             selectedCategory={selectedCategory}
+            searchQuery={searchQuery}
           />
 
           {/* Floating Cart Button */}

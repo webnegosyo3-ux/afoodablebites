@@ -58,7 +58,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'sizzling-meals',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
   {
@@ -70,7 +69,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'sizzling-meals',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1558030006-450675393462?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
   {
@@ -82,7 +80,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'sizzling-meals',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
   {
@@ -94,7 +91,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'sizzling-meals',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
   {
@@ -106,7 +102,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'sizzling-meals',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
   {
@@ -118,7 +113,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'sizzling-meals',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
   {
@@ -130,7 +124,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'sizzling-meals',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
 
@@ -144,7 +137,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'filipino-soups',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
   {
@@ -156,11 +148,10 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'filipino-soups',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=700&auto=format&fit=crop&q=80',
     addOns: standardMealAddOns
   },
 
-  // --- Add-ons (Available as Standalone Items Too) ---
+  // --- Add-ons ---
   {
     id: 'item-plain-rice',
     name: 'Plain Rice',
@@ -170,7 +161,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'add-ons',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1516684732162-798a0062be99?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'item-fried-rice',
@@ -181,7 +171,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'add-ons',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'item-egg',
@@ -192,7 +181,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'add-ons',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'item-mushroom-soup',
@@ -203,7 +191,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'add-ons',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=700&auto=format&fit=crop&q=80'
   },
 
   // --- Cold Drinks ---
@@ -216,7 +203,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'drink-lemonade',
@@ -227,7 +213,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     popular: true,
     available: true,
-    image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'drink-coke',
@@ -238,7 +223,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'drink-sprite',
@@ -249,7 +233,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'drink-royal',
@@ -260,7 +243,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'drink-coke-zero',
@@ -271,7 +253,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'drink-sprite-zero',
@@ -282,7 +263,6 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=700&auto=format&fit=crop&q=80'
   },
   {
     id: 'drink-royal-zero',
@@ -293,6 +273,5 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
     category: 'drinks',
     popular: false,
     available: true,
-    image: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=700&auto=format&fit=crop&q=80'
   }
 ];
