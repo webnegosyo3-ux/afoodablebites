@@ -195,7 +195,15 @@ const AdminDashboard: React.FC = () => {
     const defaultCategory = categories.length > 0 ? categories[0].id : 'sizzling-meals';
     setFormData({ name: '', description: '', basePrice: 0, category: defaultCategory, popular: false, available: true, variations: [], addOns: [] });
   };
-  const handleEditItem = (item: MenuItem) => { setEditingItem(item); setFormData(item); setCurrentView('edit'); };
+  const handleEditItem = (item: MenuItem) => { 
+    setEditingItem(item); 
+    setFormData({
+      ...item,
+      variations: item.variations ? JSON.parse(JSON.stringify(item.variations)) : [],
+      addOns: item.addOns ? JSON.parse(JSON.stringify(item.addOns)) : []
+    }); 
+    setCurrentView('edit'); 
+  };
   const handleDeleteItem = async (id: string) => {
     if (confirm('Delete this item? This cannot be undone.')) {
       try { setIsProcessing(true); await deleteMenuItem(id); }
@@ -204,7 +212,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
   const handleSaveItem = async () => {
-    if (!formData.name || !formData.description || !formData.basePrice) {
+    if (!formData.name?.trim() || !formData.description?.trim() || !formData.basePrice) {
       alert('❌ Fill in all required fields: Name, Description, Base Price'); return;
     }
     if (formData.basePrice <= 0) { alert('❌ Base price must be > 0'); return; }
@@ -214,8 +222,18 @@ const AdminDashboard: React.FC = () => {
     }
     try {
       setIsProcessing(true);
-      if (editingItem) { await updateMenuItem(editingItem.id, formData); alert(`✅ Updated "${formData.name}"!`); }
-      else { await addMenuItem(formData as Omit<MenuItem, 'id'>); alert(`✅ Added "${formData.name}" to menu!`); }
+      const dataToSave = {
+        ...formData,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+      };
+      if (editingItem) { 
+        await updateMenuItem(editingItem.id, dataToSave); 
+        alert(`✅ Matagumpay na na-update ang "${dataToSave.name}"!`); 
+      } else { 
+        await addMenuItem(dataToSave as Omit<MenuItem, 'id'>); 
+        alert(`✅ Matagumpay na naidagdag ang "${dataToSave.name}" sa menu!`); 
+      }
       setCurrentView('items'); setEditingItem(null);
       setFormData({ name: '', description: '', basePrice: 0, category: 'sizzling-meals', popular: false, available: true, variations: [], addOns: [] });
     } catch (err) {
