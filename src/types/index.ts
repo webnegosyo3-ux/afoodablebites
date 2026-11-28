@@ -72,12 +72,23 @@ export interface SiteSetting {
   updated_at: string;
 }
 
+export interface DeliveryLocation {
+  id: string;
+  name: string;
+  fee: number;
+  active: boolean;
+}
+
 export interface SiteSettings {
   site_name: string;
   site_logo: string;
   site_description: string;
   currency: string;
   currency_code: string;
+  delivery_fee: number;
+  free_delivery_enabled: boolean;
+  free_delivery_threshold: number;
+  delivery_locations: DeliveryLocation[];
 }
 
 // Welcome Page & Promo Slide Types

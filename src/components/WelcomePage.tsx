@@ -131,7 +131,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onOrderNow }) => {
           {/* Promo Visual Image */}
           <div 
             key={`promo-img-${slide.id}`} 
-            className="md:col-span-7 flex justify-center items-center animate-scale-in order-1 md:order-2"
+            className="md:col-span-7 w-full flex flex-col justify-center items-center gap-4 sm:gap-5 animate-scale-in order-1 md:order-2"
           >
             <div className="relative w-full max-w-xl md:max-w-none h-64 sm:h-80 md:h-[420px] lg:h-[480px] xl:h-[520px] rounded-3xl overflow-hidden shadow-2xl bg-zinc-900 group border border-white/5">
               <img
@@ -148,6 +148,18 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onOrderNow }) => {
                 </span>
               </div>
             </div>
+
+            {/* Touch-friendly order action directly below the promo image */}
+            <button
+              type="button"
+              onClick={onOrderNow}
+              className="w-full sm:w-auto py-3.5 sm:py-4 px-8 sm:px-14 text-base sm:text-lg font-black rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-xl hover:from-amber-400 hover:via-orange-400 hover:to-red-400 transition-all duration-300 transform hover:scale-105 active:scale-95 inline-flex items-center justify-center space-x-2"
+            >
+              <Flame className="w-5 h-5 text-yellow-200 animate-bounce" />
+              <span className="tracking-wide uppercase drop-shadow">
+                {config.buttonText || 'TAP TO ORDER'}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -169,20 +181,6 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onOrderNow }) => {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Sleek, Touch-Friendly "TAP TO ORDER" Button */}
-      <div className="w-full py-4 sm:py-5 px-4 z-20 flex justify-center">
-        <button
-          type="button"
-          onClick={onOrderNow}
-          className="py-3 sm:py-3.5 px-8 sm:px-12 text-base sm:text-lg font-black rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-xl hover:from-amber-400 hover:via-orange-400 hover:to-red-400 transition-all duration-300 transform hover:scale-105 active:scale-95 inline-flex items-center justify-center space-x-2"
-        >
-          <Flame className="w-5 h-5 text-yellow-200 animate-bounce" />
-          <span className="tracking-wide uppercase drop-shadow">
-            {config.buttonText || 'TAP TO ORDER'}
-          </span>
-        </button>
       </div>
 
       {/* Seamless Progress Animation */}

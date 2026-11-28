@@ -31,6 +31,7 @@ import {
 } from '../utils/audioAlert';
 import { buildTextReceipt } from './OrderReceipt';
 import { exportOrdersCsv } from '../utils/exportCsv';
+import { getOrderDeliveryFee } from '../utils/delivery';
 
 interface OrdersManagerProps {
   onBack: () => void;
@@ -470,6 +471,11 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack, onOpenSlideMenu }
                       <span className="text-base font-black text-amber-400">
                         ₱{order.total}
                       </span>
+                      {order.serviceType === 'delivery' && (
+                        <span className="text-[11px] text-zinc-400 block mt-0.5">
+                          Delivery: ₱{getOrderDeliveryFee(order)}
+                        </span>
+                      )}
                     </div>
 
                     {order.address && (

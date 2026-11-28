@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp,
   Package, Users, Lock, FolderOpen, CreditCard, Settings, Sparkles, Flame,
-  ShoppingBag, Bell, BellOff, BarChart3, Menu, Volume2
+  ShoppingBag, Bell, BellOff, BarChart3, Menu, Truck, Volume2
 } from 'lucide-react';
 import { MenuItem, Variation, AddOn, AdminOrder } from '../types';
 import { addOnCategories } from '../data/menuData';
@@ -19,9 +19,11 @@ import {
   vibrateDevice,
   testOrderChime
 } from '../utils/audioAlert';
+import { getOrderDeliveryFee } from '../utils/delivery';
 import ImageUpload from './ImageUpload';
 import CategoryManager from './CategoryManager';
 import PaymentMethodManager from './PaymentMethodManager';
+import DeliverySettingsManager from './DeliverySettingsManager';
 import SiteSettingsManager from './SiteSettingsManager';
 import WelcomePageManager from './WelcomePageManager';
 import OrdersManager from './OrdersManager';
@@ -114,7 +116,7 @@ const AdminDashboard: React.FC = () => {
   const { categories } = useCategories();
   const { orders } = useOrders();
   const [currentView, setCurrentView] = useState<
-    'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'settings' | 'welcome' | 'orders' | 'analytics' | 'customers' | 'upsells'
+    'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'delivery' | 'settings' | 'welcome' | 'orders' | 'analytics' | 'customers' | 'upsells'
   >('dashboard');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -129,6 +131,33 @@ const AdminDashboard: React.FC = () => {
   // Tracks whether the Web Audio API has been unlocked via a user gesture on this device.
   // On mobile (iOS/Android) audio stays silent until the user taps something.
   const [audioUnlocked, setAudioUnlocked] = useState<boolean>(isAudioUnlocked());
+
+  // Arm the ringtone automatically when the dashboard opens or returns to the foreground.
+  // Mobile browsers may still require the first tap/click; the global gesture listener handles that.
+  useEffect(() => {
+    let active = true;
+
+    const armAudio = async () => {
+      const unlocked = await unlockAudio();
+      if (active) setAudioUnlocked(unlocked && isAudioUnlocked());
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) void armAudio();
+    };
+
+    const handleAudioUnlocked = () => setAudioUnlocked(isAudioUnlocked());
+
+    void armAudio();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('afoodable_audio_unlocked', handleAudioUnlocked);
+
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('afoodable_audio_unlocked', handleAudioUnlocked);
+    };
+  }, []);
 
   const toggleSound = async () => {
     const next = !soundEnabled;
@@ -477,6 +506,12 @@ const AdminDashboard: React.FC = () => {
             <span className="text-zinc-400">Payment:</span>
             <span className="font-semibold text-zinc-100">{activeNewOrderAlert.paymentMethod}</span>
           </div>
+          {activeNewOrderAlert.serviceType === 'delivery' && (
+            <div className="flex justify-between items-center text-zinc-300">
+              <span className="text-zinc-400">Delivery Fee:</span>
+              <span className="font-semibold text-zinc-100">₱{getOrderDeliveryFee(activeNewOrderAlert)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center pt-2 border-t border-zinc-800 font-black text-sm sm:text-base">
             <span className="text-white">Total Amount:</span>
             <span className="text-amber-400 text-base sm:text-lg">₱{activeNewOrderAlert.total}</span>
@@ -574,7 +609,7 @@ const AdminDashboard: React.FC = () => {
         <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
           <div className="text-[10px] font-black text-amber-400 uppercase tracking-wider px-2 py-1 flex items-center justify-between">
             <span>Admin Sections</span>
-            <span className="text-[10px] text-zinc-500 font-mono">10 Modules</span>
+            <span className="text-[10px] text-zinc-500 font-mono">11 Modules</span>
           </div>
 
           {[
@@ -640,6 +675,14 @@ const AdminDashboard: React.FC = () => {
               desc: 'GCash QR, COD, banking',
               action: () => { setCurrentView('payments'); setIsSlideDrawerOpen(false); },
               highlight: currentView === 'payments'
+            },
+            {
+              id: 'delivery',
+              label: 'Delivery Settings',
+              icon: Truck,
+              desc: 'Locations, delivery fees & free delivery',
+              action: () => { setCurrentView('delivery'); setIsSlideDrawerOpen(false); },
+              highlight: currentView === 'delivery'
             },
             {
               id: 'welcome',
@@ -1275,6 +1318,24 @@ const AdminDashboard: React.FC = () => {
   if (currentView === 'upsells') return <>{floatingAlertBanner}{slideFeaturesDrawer}<UpsellManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
   if (currentView === 'categories') return <>{floatingAlertBanner}{slideFeaturesDrawer}<CategoryManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
   if (currentView === 'payments') return <>{floatingAlertBanner}{slideFeaturesDrawer}<PaymentMethodManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
+  if (currentView === 'delivery') {
+    return (
+      <>
+        {floatingAlertBanner}
+        {slideFeaturesDrawer}
+        <div className="min-h-screen bg-zinc-950">
+          <AdminTopbar
+            title="Delivery Settings"
+            onBack={() => setCurrentView('dashboard')}
+            onOpenSlideMenu={() => setIsSlideDrawerOpen(true)}
+          />
+          <div className="max-w-5xl mx-auto px-3 sm:px-6 py-5 sm:py-8">
+            <DeliverySettingsManager />
+          </div>
+        </div>
+      </>
+    );
+  }
   if (currentView === 'welcome') return <>{floatingAlertBanner}{slideFeaturesDrawer}<WelcomePageManager onBack={() => setCurrentView('dashboard')} onOpenSlideMenu={() => setIsSlideDrawerOpen(true)} /></>;
 
   if (currentView === 'settings') {

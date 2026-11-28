@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Check, QrCode, Eye, X } from 'lucide-react';
+import { ArrowLeft, Clock, CreditCard, Banknote, CheckCircle2, Flame, Copy, Check, QrCode, Eye, X, MapPin } from 'lucide-react';
 import { CartItem, ServiceType, AdminOrder } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import { useOrders } from '../hooks/useOrders';
 import OrderReceipt from './OrderReceipt';
+import { DeliveryQuote, getActiveDeliveryLocations, getDeliveryQuote } from '../utils/delivery';
 
 interface CheckoutProps {
   cartItems: CartItem[];
@@ -36,13 +38,64 @@ const isCodMethod = (m?: { id: string; name?: string } | null): boolean => {
   );
 };
 
+const formatMoney = (value: number, currency: string): string =>
+  `${currency}${value.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
+
+const PricingBreakdown: React.FC<{
+  quote: DeliveryQuote;
+  serviceType: ServiceType;
+  currency: string;
+}> = ({ quote, serviceType, currency }) => (
+  <div className="border-t-2 border-amber-400 pt-4 space-y-2" aria-live="polite">
+    <div className="flex items-center justify-between text-sm text-zinc-600">
+      <span>Subtotal:</span>
+      <span className="font-bold text-zinc-900">{formatMoney(quote.subtotal, currency)}</span>
+    </div>
+
+    {serviceType === 'delivery' && (
+      <div className="flex items-center justify-between text-sm text-zinc-600">
+        <span>Delivery Fee:</span>
+        <span className={`font-black ${quote.requiresLocation ? 'text-amber-700' : quote.deliveryFee === 0 ? 'text-emerald-600' : 'text-zinc-900'}`}>
+          {quote.requiresLocation ? 'Select location' : quote.deliveryFee === 0 ? 'FREE' : formatMoney(quote.deliveryFee, currency)}
+        </span>
+      </div>
+    )}
+
+    {serviceType === 'delivery' && quote.selectedLocationName && (
+      <div className="flex items-center justify-between text-sm text-zinc-600">
+        <span>Location:</span>
+        <span className="font-bold text-zinc-900">{quote.selectedLocationName}</span>
+      </div>
+    )}
+
+    {serviceType === 'delivery' && quote.freeDeliveryEnabled && quote.freeDeliveryThreshold > 0 && (
+      <p className={`text-xs font-semibold rounded-lg px-3 py-2 ${
+        quote.qualifiesForFreeDelivery
+          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+          : 'bg-amber-50 text-amber-800 border border-amber-200'
+      }`}>
+        {quote.qualifiesForFreeDelivery
+          ? `Free delivery unlocked for this order.`
+          : `Add ${formatMoney(quote.amountUntilFreeDelivery, currency)} more in food and add-ons for free delivery.`}
+      </p>
+    )}
+
+    <div className="flex items-center justify-between text-2xl font-black text-zinc-900 pt-1">
+      <span>Total:</span>
+      <span className="text-amber-600">{formatMoney(quote.total, currency)}</span>
+    </div>
+  </div>
+);
+
 const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOrderSuccess }) => {
   const { activePaymentMethods } = usePaymentMethods();
+  const { siteSettings, loading: settingsLoading } = useSiteSettings();
   const { createOrder } = useOrders();
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [customerName, setCustomerName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [serviceType, setServiceType] = useState<ServiceType>('dine-in');
+  const [selectedLocationId, setSelectedLocationId] = useState('');
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [pickupTime, setPickupTime] = useState('10-15');
@@ -90,13 +143,28 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
 
   const currentMethod = activePaymentMethods.find(m => m.id === selectedPaymentId) || activePaymentMethods[0];
   const isCod = isCodMethod(currentMethod);
+  const activeDeliveryLocations = getActiveDeliveryLocations(siteSettings);
+  const deliveryQuote = getDeliveryQuote(totalPrice, serviceType, siteSettings, selectedLocationId);
+  const orderTotal = deliveryQuote.total;
+  const currency = siteSettings.currency || '₱';
+
+  React.useEffect(() => {
+    if (selectedLocationId && !activeDeliveryLocations.some(location => location.id === selectedLocationId)) {
+      setSelectedLocationId('');
+    }
+  }, [activeDeliveryLocations, selectedLocationId]);
 
   const handleProceedToPayment = () => {
     setStep('payment');
   };
 
   const handlePlaceOrder = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || settingsLoading) return;
+    if (deliveryQuote.requiresLocation) {
+      setStep('details');
+      setPaymentFormError('Please select your delivery location before placing the order.');
+      return;
+    }
 
     if (!isCod) {
       if (!gcashAccountName.trim() || !gcashRefNumber.trim()) {
@@ -116,19 +184,22 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
     const paymentText = isCod
       ? 'Cash on Delivery (COD)'
       : (currentMethod?.name || 'GCash');
+    const deliveryAddress = serviceType === 'delivery'
+      ? [deliveryQuote.selectedLocationName, address.trim()].filter(Boolean).join(' — ')
+      : undefined;
 
     try {
       const order = await createOrder({
         customerName: customerName.trim(),
         contactNumber: contactNumber.trim(),
         serviceType,
-        address: serviceType === 'delivery' ? address.trim() : undefined,
+        address: deliveryAddress,
         landmark: serviceType === 'delivery' && landmark ? landmark.trim() : undefined,
         pickupTime: timeInfo || undefined,
         paymentMethod: paymentText,
         paymentSenderName: !isCod ? gcashAccountName.trim() : undefined,
         paymentReferenceNumber: !isCod ? gcashRefNumber.trim() : undefined,
-        total: totalPrice,
+        total: orderTotal,
         items: cartItems,
         notes: notes ? notes.trim() : undefined
       });
@@ -155,9 +226,10 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
   // No automatic redirect — customer must press the button manually.
 
   const isDetailsValid = Boolean(
+    !settingsLoading &&
     customerName.trim() &&
     contactNumber.trim() &&
-    (serviceType !== 'delivery' || address.trim()) &&
+    (serviceType !== 'delivery' || (address.trim() && !deliveryQuote.requiresLocation)) &&
     (serviceType !== 'pickup' || (pickupTime !== 'custom' || customTime.trim()))
   );
 
@@ -191,19 +263,14 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                         Add-ons: {item.selectedAddOns.map(addOn => addOn.name).join(', ')}
                       </p>
                     )}
-                    <p className="text-xs text-zinc-500">₱{item.totalPrice} x {item.quantity}</p>
+                    <p className="text-xs text-zinc-500">{formatMoney(item.totalPrice, currency)} x {item.quantity}</p>
                   </div>
-                  <span className="font-bold text-zinc-900">₱{item.totalPrice * item.quantity}</span>
+                  <span className="font-bold text-zinc-900">{formatMoney(item.totalPrice * item.quantity, currency)}</span>
                 </div>
               ))}
             </div>
 
-            <div className="border-t-2 border-amber-400 pt-4">
-              <div className="flex items-center justify-between text-2xl font-black text-zinc-900">
-                <span>Total:</span>
-                <span className="text-amber-600">₱{totalPrice}</span>
-              </div>
-            </div>
+            <PricingBreakdown quote={deliveryQuote} serviceType={serviceType} currency={currency} />
           </div>
 
           {/* Customer Details Form */}
@@ -316,6 +383,26 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
               {/* Delivery Address */}
               {serviceType === 'delivery' && (
                 <>
+                  {activeDeliveryLocations.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-bold text-zinc-800 mb-1.5">Delivery Location *</label>
+                      <select
+                        value={selectedLocationId}
+                        onChange={(e) => setSelectedLocationId(e.target.value)}
+                        className="w-full px-4 py-3 border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
+                        required
+                      >
+                        <option value="">Select your location</option>
+                        {activeDeliveryLocations.map((location) => (
+                          <option key={location.id} value={location.id}>
+                            {location.name} — {location.fee === 0 ? 'FREE' : formatMoney(location.fee, currency)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-zinc-500 mt-1.5">Your selected location determines the delivery fee shown in the order summary.</p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-bold text-zinc-800 mb-1.5">Delivery Address *</label>
                     <textarea
@@ -436,7 +523,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                   <p className="text-xs text-amber-800">Magbayad pagkatanggap ng inyong order</p>
                 </div>
               </div>
-              <span className="font-black text-amber-700 text-base">₱{totalPrice}</span>
+              <span className="font-black text-amber-700 text-base">{formatMoney(orderTotal, currency)}</span>
             </div>
           ) : (
             <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-blue-400 shadow-md space-y-4">
@@ -509,7 +596,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                 <div className="flex justify-between items-center py-1">
                   <span className="text-zinc-500 font-medium">Amount to Pay:</span>
                   <span className="font-black text-amber-600 text-sm sm:text-base">
-                    ₱{totalPrice}
+                    {formatMoney(orderTotal, currency)}
                   </span>
                 </div>
               </div>
@@ -584,6 +671,9 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
               {serviceType === 'delivery' && (
                 <>
                   <p className="text-zinc-700"><span className="text-zinc-500">Address:</span> {address}</p>
+                  {deliveryQuote.selectedLocationName && (
+                    <p className="text-zinc-700"><span className="text-zinc-500">Location:</span> {deliveryQuote.selectedLocationName}</p>
+                  )}
                   {landmark && <p className="text-zinc-700"><span className="text-zinc-500">Landmark:</span> {landmark}</p>}
                 </>
               )}
@@ -635,19 +725,16 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
                         + {item.selectedAddOns.map(addOn => addOn.name).join(', ')}
                       </p>
                     )}
-                    <p className="text-xs text-zinc-500">₱{item.totalPrice} x {item.quantity}</p>
+                    <p className="text-xs text-zinc-500">{formatMoney(item.totalPrice, currency)} x {item.quantity}</p>
                   </div>
-                  <span className="font-bold text-zinc-900 text-sm">₱{item.totalPrice * item.quantity}</span>
+                  <span className="font-bold text-zinc-900 text-sm">{formatMoney(item.totalPrice * item.quantity, currency)}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="border-t-2 border-amber-400 pt-4 mb-6">
-            <div className="flex items-center justify-between text-2xl font-black text-zinc-900">
-              <span>Total:</span>
-              <span className="text-amber-600">₱{totalPrice}</span>
-            </div>
+          <div className="mb-6">
+            <PricingBreakdown quote={deliveryQuote} serviceType={serviceType} currency={currency} />
           </div>
 
           {!isCod && (!gcashAccountName.trim() || !gcashRefNumber.trim()) && (
@@ -660,10 +747,20 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack, onOr
           <button
             type="button"
             onClick={handlePlaceOrder}
-            disabled={isSubmitting}
+            disabled={isSubmitting || settingsLoading || deliveryQuote.requiresLocation}
             className="w-full py-4 rounded-xl font-black text-lg transition-all duration-200 transform bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white hover:shadow-xl hover:scale-[1.01] active:scale-95 flex items-center justify-center space-x-2 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? (
+            {settingsLoading ? (
+              <span className="flex items-center space-x-2">
+                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Loading delivery rates...</span>
+              </span>
+            ) : deliveryQuote.requiresLocation ? (
+              <span className="flex items-center space-x-2">
+                <MapPin className="w-5 h-5" />
+                <span>Select a delivery location first</span>
+              </span>
+            ) : isSubmitting ? (
               <span className="flex items-center space-x-2">
                 <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 <span>Submitting Order...</span>

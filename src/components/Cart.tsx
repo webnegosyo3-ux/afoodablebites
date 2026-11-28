@@ -1,7 +1,9 @@
 import React from 'react';
-import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Flame, Sparkles, Check } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Flame, Sparkles, Check, Truck } from 'lucide-react';
 import { CartItem, UpsellItem } from '../types';
 import { useUpsells } from '../hooks/useUpsells';
+import { useSiteSettings } from '../hooks/useSiteSettings';
+import { getActiveDeliveryLocations, getDeliveryQuote } from '../utils/delivery';
 
 interface CartProps {
   cartItems: CartItem[];
@@ -25,7 +27,11 @@ const Cart: React.FC<CartProps> = ({
   addToCart
 }) => {
   const { activeUpsells } = useUpsells();
+  const { siteSettings } = useSiteSettings();
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const activeDeliveryLocations = getActiveDeliveryLocations(siteSettings);
+  const deliveryQuote = getDeliveryQuote(getTotalPrice(), 'delivery', siteSettings);
+  const showDeliveryInfo = siteSettings.delivery_fee > 0 || deliveryQuote.freeDeliveryEnabled || activeDeliveryLocations.length > 0;
 
   const handleAddUpsell = (upsell: UpsellItem) => {
     if (!addToCart) return;
@@ -286,6 +292,40 @@ const Cart: React.FC<CartProps> = ({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Delivery Pricing Notice */}
+      {showDeliveryInfo && (
+        <div className="bg-white rounded-2xl border border-zinc-200 p-4 sm:p-5 mb-6 space-y-2">
+          <div className="flex items-center space-x-2">
+            <Truck className="w-4 h-4 text-amber-500" />
+            <h3 className="font-black text-sm sm:text-base text-zinc-900">Delivery Pricing</h3>
+          </div>
+          {activeDeliveryLocations.length > 0 ? (
+            <p className="text-xs sm:text-sm text-zinc-600">
+              Delivery fees vary by location.{' '}
+              <span className="font-bold text-zinc-900">
+                {Math.min(...activeDeliveryLocations.map(location => location.fee)) === 0
+                  ? 'Free-delivery locations are available.'
+                  : `Fees start at ${siteSettings.currency}${Math.min(...activeDeliveryLocations.map(location => location.fee))}.`}
+              </span>
+            </p>
+          ) : siteSettings.delivery_fee > 0 && (
+            <p className="text-xs sm:text-sm text-zinc-600">
+              Delivery fee: <span className="font-bold text-zinc-900">{siteSettings.currency}{siteSettings.delivery_fee}</span>
+            </p>
+          )}
+          {deliveryQuote.freeDeliveryEnabled && deliveryQuote.freeDeliveryThreshold > 0 && (
+            <p className={`text-xs sm:text-sm font-semibold ${
+              deliveryQuote.qualifiesForFreeDelivery ? 'text-emerald-700' : 'text-amber-700'
+            }`}>
+              {deliveryQuote.qualifiesForFreeDelivery
+                ? `Your food subtotal qualifies for free delivery.`
+                : `Add ${siteSettings.currency}${deliveryQuote.amountUntilFreeDelivery} more in food and add-ons for free delivery.`}
+            </p>
+          )}
+          <p className="text-[11px] text-zinc-400">Select Delivery and your location at checkout to see the exact fee. Pickup and dine-in have no delivery charge.</p>
         </div>
       )}
 

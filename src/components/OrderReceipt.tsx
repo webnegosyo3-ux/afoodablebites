@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { AdminOrder } from '../types';
+import { getOrderDeliveryFee, getOrderSubtotal } from '../utils/delivery';
 
 interface OrderReceiptProps {
   order: AdminOrder;
@@ -67,6 +68,10 @@ export const buildTextReceipt = (order: AdminOrder, storeName = 'Afoodable Bites
   });
 
   lines.push(divider);
+  lines.push(`SUBTOTAL : ₱${getOrderSubtotal(order)}`);
+  if (order.serviceType === 'delivery') {
+    lines.push(`DELIVERY : ₱${getOrderDeliveryFee(order)}`);
+  }
   lines.push(`TOTAL    : ₱${order.total}`);
   lines.push(divider);
   lines.push(`Payment  : ${order.paymentMethod}`);
@@ -89,6 +94,8 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   showCopyButton = false,
 }) => {
   const [copied, setCopied] = useState(false);
+  const subtotal = getOrderSubtotal(order);
+  const deliveryFee = getOrderDeliveryFee(order);
 
   const handleCopy = () => {
     const text = buildTextReceipt(order, storeName);
@@ -199,10 +206,24 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
           ))}
         </div>
 
-        {/* Total */}
-        <div className="px-5 py-3 flex items-center justify-between border-b border-zinc-100">
-          <span className="text-sm font-black text-zinc-700 uppercase tracking-wide">Total Amount</span>
-          <span className="text-lg font-black text-amber-500">₱{order.total}</span>
+        {/* Totals */}
+        <div className="px-5 py-3 space-y-2 border-b border-zinc-100">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-zinc-500">Subtotal</span>
+            <span className="font-semibold text-zinc-800">₱{subtotal}</span>
+          </div>
+          {order.serviceType === 'delivery' && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-zinc-500">Delivery Fee</span>
+              <span className={`font-black ${deliveryFee === 0 ? 'text-emerald-600' : 'text-zinc-800'}`}>
+                {deliveryFee === 0 ? 'FREE' : `₱${deliveryFee}`}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center justify-between pt-1 border-t border-zinc-100">
+            <span className="text-sm font-black text-zinc-700 uppercase tracking-wide">Total Amount</span>
+            <span className="text-lg font-black text-amber-500">₱{order.total}</span>
+          </div>
         </div>
 
         {/* Payment */}

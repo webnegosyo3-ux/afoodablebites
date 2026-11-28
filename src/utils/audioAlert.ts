@@ -5,7 +5,8 @@ let audioCtx: AudioContext | null = null;
 let ringInterval: ReturnType<typeof setInterval> | null = null;
 let isUnlocked = false;
 
-const SOUND_PREF_KEY = 'afoodable_admin_sound_alert_enabled';
+// v2 intentionally ignores the legacy muted preference so existing admin devices auto-enable ringing.
+const SOUND_PREF_KEY = 'afoodable_admin_sound_alert_enabled_v2';
 
 export const isSoundAlertEnabled = (): boolean => {
   try {
@@ -62,8 +63,11 @@ export const unlockAudio = async (): Promise<boolean> => {
     source.connect(ctx.destination);
     source.start(0);
 
-    isUnlocked = true;
-    return true;
+    isUnlocked = ctx.state === 'running';
+    if (isUnlocked && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('afoodable_audio_unlocked'));
+    }
+    return isUnlocked;
   } catch (err) {
     console.warn('Audio unlock notice:', err);
     return false;
@@ -74,7 +78,7 @@ export const unlockAudio = async (): Promise<boolean> => {
 // This covers the case where the first user action happens before the login button tap
 // (e.g. tapping the password field).
 if (typeof window !== 'undefined') {
-  const unlockEvents = ['touchstart', 'touchend', 'click', 'pointerdown'] as const;
+  const unlockEvents = ['touchstart', 'touchend', 'click', 'pointerdown', 'keydown'] as const;
   const handleUserGesture = async () => {
     // await here so iOS resume() runs synchronously within the gesture stack
     await unlockAudio();
@@ -103,12 +107,14 @@ export const vibrateDevice = (pattern: number | number[] = [300, 150, 300, 150, 
  * oscillator nodes. On mobile, ctx.resume() must have been awaited inside a
  * prior user-gesture; here we just handle the case where it was missed.
  */
+const isContextRunning = (ctx: AudioContext): boolean => ctx.state === 'running';
+
 const ensureContextRunning = async (ctx: AudioContext): Promise<boolean> => {
-  if (ctx.state === 'running') return true;
+  if (isContextRunning(ctx)) return true;
   if (ctx.state === 'suspended') {
     try {
       await ctx.resume();
-      return ctx.state === 'running';
+      return isContextRunning(ctx);
     } catch {
       return false;
     }
